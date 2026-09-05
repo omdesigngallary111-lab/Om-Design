@@ -89,8 +89,10 @@ export default function Home() {
   return (
     <>
       <Seo
-        title="Digital Embroidery Designs for Sarees & Fabric"
-        description="Machine-ready DST, EMB, DHE and DHP embroidery design files — bridal borders, floral motifs, geometric jaal and festive booti, digitised for clean, consistent stitching."
+        brandFirst
+        path="/"
+        title="Embroidery Designs & Classes in Surat"
+        description="Buy machine-ready embroidery designs (DST, EMB, DHE, DHP) for sarees & fabric, or join embroidery classes in Varachha, Surat. Crafted by Om Design & Classes."
       />
 
       {!heroReady ? (
