@@ -1,5 +1,10 @@
 User-agent: *
+Allow: /
+
 Disallow: /admin
 Disallow: /account
 Disallow: /wishlist
 Disallow: /login
+Disallow: /reset-password
+
+Sitemap: https://www.omdesignandclasses.com/sitemap.xml
