@@ -321,7 +321,18 @@ export default function DesignDetail() {
 
       <div className="grid md:grid-cols-2 gap-12">
         <div>
-          <div className="aspect-square bg-sand rounded-sm overflow-hidden flex items-center justify-center">
+          <div className="relative aspect-square bg-sand rounded-sm overflow-hidden flex items-center justify-center">
+            {design.design_id && (
+              <div
+                className="pointer-events-none absolute left-0 top-0 z-10 flex items-stretch shadow-[2px_2px_10px_rgba(45,32,24,0.12)]"
+                aria-label={`Design ID ${design.design_id}`}
+              >
+                <span className="w-1 bg-gold" aria-hidden />
+                <span className="bg-white px-3 py-2 font-body text-sm font-semibold tabular-nums tracking-wide text-maroon">
+                  {design.design_id}
+                </span>
+              </div>
+            )}
             {gallery[activeImage] ? (
               <img
                 src={gallery[activeImage]}

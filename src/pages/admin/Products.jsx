@@ -7,7 +7,7 @@ import { useAdminFormModal } from "../../hooks/useAdminFormModal.js";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue.js";
 import { slugify } from "../../lib/slugify.js";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination.js";
-import { fetchCategories, FILE_FORMATS } from "../../lib/catalog.js";
+import { fetchCategories, FILE_FORMATS, DESIGN_FILE_ACCEPT } from "../../lib/catalog.js";
 import {
   fetchAllDesigns,
   fetchAllSubcategories,
@@ -258,6 +258,17 @@ export default function Products() {
 
   const handleDesignFileUpload = async (file) => {
     if (!file) return;
+    const ext = file.name.includes(".")
+      ? file.name.split(".").pop().toLowerCase()
+      : "";
+    const allowed = new Set(["dst", "emb", "dhe", "dhp", "zip"]);
+    if (!allowed.has(ext)) {
+      const msg = "Upload a DST, EMB, DHE, DHP, or ZIP file.";
+      setError(msg);
+      showToast(msg, { type: "error" });
+      return;
+    }
+
     setFileUploading(true);
     const { path, error: err } = await uploadDesignFile(file);
     setFileUploading(false);
@@ -266,7 +277,12 @@ export default function Products() {
       showToast(err, { type: "error" });
       return;
     }
-    setForm((f) => ({ ...f, design_file_url: path }));
+    setForm((f) => ({
+      ...f,
+      design_file_url: path,
+      // ZIP packages: set format automatically so catalogue filters match.
+      ...(ext === "zip" ? { file_format: "ZIP" } : {}),
+    }));
   };
 
   const validate = () => {
@@ -584,8 +600,9 @@ export default function Products() {
             />
             <FileDropzone
               kind="file"
+              accept={DESIGN_FILE_ACCEPT}
               label="Design file"
-              hint="DST / EMB / DHE / DHP — stored privately"
+              hint="Single file (DST / EMB / DHE / DHP) or ZIP with multiple formats — stored privately"
               uploading={fileUploading}
               fileLabel={designFileName}
               onFile={handleDesignFileUpload}

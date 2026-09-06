@@ -239,4 +239,9 @@ export async function fetchActiveCarouselSlides() {
 
 // Kept in one place so Categories/Designs filter UI and any admin form
 // (Phase 5) reference the same list rather than duplicating it.
-export const FILE_FORMATS = ['DST', 'EMB', 'DHE', 'DHP']
+// ZIP = multi-file package (several machine formats in one download).
+export const FILE_FORMATS = ['DST', 'EMB', 'DHE', 'DHP', 'ZIP']
+
+/** Extensions accepted for the private design-file upload. */
+export const DESIGN_FILE_ACCEPT =
+  '.dst,.emb,.dhe,.dhp,.zip,application/zip,application/x-zip-compressed'
