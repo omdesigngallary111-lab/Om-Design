@@ -4,6 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveOffer } from "../_shared/offers.ts";
 import { corsPreflightResponse, jsonResponse } from "../_shared/cors.ts";
 import {
+  clearUserCart,
+  createSignedDownloads,
   insertOrderItems,
   resolveCheckoutLines,
   sumLinePrices,
@@ -16,7 +18,6 @@ async function requireUser(req: Request) {
   }
 
   const jwt = authHeader.slice("Bearer ".length);
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) {
@@ -25,25 +26,27 @@ async function requireUser(req: Request) {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
   const { data, error } = await supabase.auth.getUser(jwt);
-
   if (error || !data?.user) {
     return { user: null, error: error?.message || "Unauthorized" };
   }
 
-  return { user: data.user, error: null };
+  return { user: data.user, error: null, supabase };
 }
 
+/**
+ * Free / ₹0 checkout — no Razorpay, no wallet debit.
+ * Used for zero-priced designs and carts (or 100% off offers).
+ */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return corsPreflightResponse();
   }
-
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  const { user, error: userError } = await requireUser(req);
-  if (!user) {
+  const { user, error: userError, supabase } = await requireUser(req);
+  if (!user || !supabase) {
     return jsonResponse({ error: userError || "Unauthorized" }, 401);
   }
 
@@ -51,13 +54,6 @@ serve(async (req) => {
   const designId = body?.design_id ?? null;
   const fromCart = body?.from_cart === true;
   const offerCode = body?.offer_code ?? null;
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const razorpayKeyId = Deno.env.get("RAZORPAY_KEY_ID")!;
-  const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET")!;
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   const { lines, error: linesError, status: linesStatus } =
     await resolveCheckoutLines(supabase, {
@@ -68,8 +64,6 @@ serve(async (req) => {
   if (linesError) return jsonResponse({ error: linesError }, linesStatus);
 
   const originalAmount = sumLinePrices(lines);
-
-  // Re-validate offer at charge time — never trust an earlier client preview.
   const offerResult = await resolveOffer(supabase, originalAmount, offerCode);
   if (offerCode && !offerResult.applicable) {
     return jsonResponse({ error: offerResult.reason || "Offer is not applicable" }, 400);
@@ -78,64 +72,28 @@ serve(async (req) => {
   const finalAmount = offerResult.applicable ? offerResult.final_amount : originalAmount;
   const offerId = offerResult.applicable ? offerResult.offer_id : null;
 
-  if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+  if (!Number.isFinite(finalAmount) || finalAmount < 0) {
+    return jsonResponse({ error: "Invalid payable amount" }, 400);
+  }
+  if (finalAmount > 0) {
     return jsonResponse(
-      {
-        error:
-          finalAmount === 0
-            ? "This order is free — use the free download checkout instead of Razorpay."
-            : "Invalid payable amount after offer",
-      },
+      { error: "This order requires payment. Use Razorpay or wallet checkout." },
       400,
     );
   }
 
-  const amountPaise = Math.round(finalAmount * 100);
-
-  // Razorpay restricts `receipt` length to <= 56 chars.
-  const receipt = `r_${user.id.slice(0, 8)}_${Date.now().toString(36)}`;
-  const basicAuth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
-
-  const rpRes = await fetch("https://api.razorpay.com/v1/orders", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${basicAuth}`,
-    },
-    body: JSON.stringify({
-      amount: amountPaise,
-      currency: "INR",
-      receipt,
-      payment_capture: 1,
-    }),
-  });
-
-  const rpJson = await rpRes.json().catch(() => null);
-  if (!rpRes.ok) {
-    return jsonResponse(
-      { error: "Failed to create Razorpay order", details: rpJson || null },
-      502,
-    );
-  }
-
-  const razorpayOrderId = rpJson?.id;
-  if (!razorpayOrderId || typeof razorpayOrderId !== "string") {
-    return jsonResponse({ error: "Invalid Razorpay order response" }, 502);
-  }
-
-  // Keep design_id = first line for legacy admin/account joins; full list in order_items.
   const { data: order, error: insertErr } = await supabase
     .from("orders")
     .insert({
       user_id: user.id,
       design_id: lines[0].design_id,
-      amount: finalAmount,
-      status: "pending",
-      razorpay_order_id: razorpayOrderId,
+      amount: 0,
+      status: "paid",
+      payment_method: "free",
       offer_id: offerId,
-      payment_method: "razorpay",
+      offer_usage_counted: false,
     })
-    .select("id")
+    .select("id, design_id")
     .single();
 
   if (insertErr || !order) {
@@ -144,27 +102,37 @@ serve(async (req) => {
 
   const { error: itemsErr } = await insertOrderItems(supabase, order.id, lines);
   if (itemsErr) {
-    await supabase.from("orders").delete().eq("id", order.id);
+    await supabase.from("orders").update({ status: "failed" }).eq("id", order.id);
     return jsonResponse({ error: itemsErr }, 500);
+  }
+
+  if (offerId) {
+    const { error: usageErr } = await supabase.rpc("consume_order_offer_usage", {
+      p_order_id: order.id,
+    });
+    if (usageErr) {
+      return jsonResponse({ error: usageErr.message }, 500);
+    }
+  }
+
+  const { downloads, signed_url, error: dlErr } = await createSignedDownloads(
+    supabase,
+    order,
+  );
+  if (dlErr) return jsonResponse({ error: dlErr }, 500);
+
+  if (fromCart) {
+    await clearUserCart(supabase, user.id);
   }
 
   return jsonResponse({
     order_id: order.id,
-    razorpay_order_id: razorpayOrderId,
-    amount: amountPaise,
-    currency: "INR",
-    key_id: razorpayKeyId,
+    signed_url,
+    downloads,
+    final_amount: 0,
     original_amount: originalAmount,
     discount_amount: offerResult.applicable ? offerResult.discount_amount : 0,
-    final_amount: finalAmount,
+    payment_method: "free",
     item_count: lines.length,
-    from_cart: fromCart,
-    offer: offerResult.applicable
-      ? {
-        offer_id: offerResult.offer_id,
-        code: offerResult.code,
-        discount_percentage: offerResult.discount_percentage,
-      }
-      : null,
   });
 });

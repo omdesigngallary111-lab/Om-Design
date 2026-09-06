@@ -69,7 +69,7 @@ export async function resolveCheckoutLines(
         };
       }
       const price = asNumber(d.price);
-      if (!Number.isFinite(price) || price <= 0) {
+      if (!Number.isFinite(price) || price < 0) {
         return {
           lines: [],
           error: `Invalid price for “${d.name}”`,
@@ -108,7 +108,7 @@ export async function resolveCheckoutLines(
   }
 
   const price = asNumber(design.price);
-  if (!Number.isFinite(price) || price <= 0) {
+  if (!Number.isFinite(price) || price < 0) {
     return { lines: [], error: "Invalid design price", status: 400 };
   }
 

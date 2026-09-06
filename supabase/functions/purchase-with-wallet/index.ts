@@ -85,7 +85,15 @@ serve(async (req) => {
   const offerId = offerResult.applicable ? offerResult.offer_id : null;
 
   if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
-    return jsonResponse({ error: "Invalid payable amount after offer" }, 400);
+    return jsonResponse(
+      {
+        error:
+          finalAmount === 0
+            ? "This order is free — use the free download checkout instead of wallet."
+            : "Invalid payable amount after offer",
+      },
+      400,
+    );
   }
 
   const note = fromCart

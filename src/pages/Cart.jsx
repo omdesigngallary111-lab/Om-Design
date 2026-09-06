@@ -127,6 +127,7 @@ export default function Cart() {
   }, [offerPreview, subtotal])
 
   const walletBalance = Number(profile?.wallet_balance ?? 0)
+  const isFree = items.length > 0 && payable.final === 0
   const canPayWithWallet = !!session && walletBalance >= payable.final && payable.final > 0
 
   const handleRemove = async (designId) => {
@@ -147,6 +148,34 @@ export default function Cart() {
     if (!code) return
     setAppliedCode(code)
     await refreshOfferPreview(code)
+  }
+
+  const handleClaimFree = async () => {
+    if (!session?.access_token) {
+      navigate('/login', { state: { from: '/cart' } })
+      return
+    }
+    if (!items.length || !isFree) return
+
+    setDownloads(null)
+    setBuying(true)
+    try {
+      const res = await callEdgeFunction(
+        'claim-free-order',
+        { from_cart: true, offer_code: appliedCode || null },
+        session.access_token,
+      )
+      setDownloads(res.downloads || [])
+      await refreshCount()
+      setItems([])
+      showToast('Free downloads are ready.', { type: 'success' })
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not claim free order', {
+        type: 'error',
+      })
+    } finally {
+      setBuying(false)
+    }
   }
 
   const handleWalletPay = async () => {
@@ -425,31 +454,49 @@ export default function Cart() {
               </div>
 
               <div className="mt-5 space-y-3">
-                {canPayWithWallet && (
+                {isFree ? (
                   <button
                     type="button"
-                    onClick={handleWalletPay}
+                    onClick={handleClaimFree}
                     disabled={buying || walletBuying}
-                    className="btn-outline w-full disabled:opacity-60"
+                    className="btn-primary w-full disabled:opacity-60"
                   >
-                    {walletBuying
-                      ? 'Paying…'
-                      : `Pay with Wallet (${formatMoney(payable.final)})`}
+                    {buying ? 'Preparing…' : 'Get free downloads'}
                   </button>
+                ) : (
+                  <>
+                    {canPayWithWallet && (
+                      <button
+                        type="button"
+                        onClick={handleWalletPay}
+                        disabled={buying || walletBuying}
+                        className="btn-outline w-full disabled:opacity-60"
+                      >
+                        {walletBuying
+                          ? 'Paying…'
+                          : `Pay with Wallet (${formatMoney(payable.final)})`}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleRazorpayPay}
+                      disabled={buying || walletBuying}
+                      className="btn-primary w-full disabled:opacity-60"
+                    >
+                      {buying ? 'Processing…' : `Pay with Razorpay (${formatMoney(payable.final)})`}
+                    </button>
+                  </>
                 )}
-                <button
-                  type="button"
-                  onClick={handleRazorpayPay}
-                  disabled={buying || walletBuying}
-                  className="btn-primary w-full disabled:opacity-60"
-                >
-                  {buying ? 'Processing…' : `Pay with Razorpay (${formatMoney(payable.final)})`}
-                </button>
               </div>
 
-              {session && !canPayWithWallet && payable.final > 0 && (
+              {session && !isFree && !canPayWithWallet && payable.final > 0 && (
                 <p className="mt-3 text-xs text-ink-soft">
                   Wallet ({formatMoney(walletBalance)}) is below this total — use Razorpay.
+                </p>
+              )}
+              {isFree && (
+                <p className="mt-3 text-xs text-ink-soft">
+                  Everything in this cart is free — no payment required.
                 </p>
               )}
             </aside>

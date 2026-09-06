@@ -150,7 +150,43 @@ export default function DesignDetail() {
   }
 
   const walletBalance = Number(profile?.wallet_balance ?? 0)
+  const isFree = payable.final === 0
   const canPayWithWallet = !!session && walletBalance >= payable.final && payable.final > 0
+
+  const handleClaimFree = async () => {
+    if (!configured) {
+      showToast('Checkout is available once Supabase is connected.', { type: 'info' })
+      return
+    }
+    if (!session?.access_token) {
+      showToast('Please sign in to download designs.', { type: 'info' })
+      navigate('/login', { state: { from: `/designs/${slug}` } })
+      return
+    }
+    if (!design?.id || !isFree) return
+
+    setSignedUrl(null)
+    setDownloads([])
+    setBuying(true)
+    try {
+      const res = await callEdgeFunction(
+        'claim-free-order',
+        {
+          design_id: design.id,
+          offer_code: appliedCode || null,
+        },
+        session.access_token,
+      )
+      setSignedUrl(res.signed_url)
+      setDownloads(res.downloads || [])
+      showToast('Free download is ready.', { type: 'success' })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not start free download'
+      showToast(msg, { type: 'error' })
+    } finally {
+      setBuying(false)
+    }
+  }
 
   const handleBuyWithWallet = async () => {
     if (!configured) {
@@ -496,28 +532,46 @@ export default function DesignDetail() {
               designId={design.id}
               redirectPath={`/designs/${slug}`}
             />
-            {canPayWithWallet && (
+            {isFree ? (
               <button
-                onClick={handleBuyWithWallet}
-                className="btn-outline disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={handleClaimFree}
+                className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled={buying || walletBuying}
               >
-                {walletBuying ? 'Paying…' : `Pay with Wallet (${formatMoney(payable.final)})`}
+                {buying ? 'Preparing…' : 'Get free download'}
               </button>
+            ) : (
+              <>
+                {canPayWithWallet && (
+                  <button
+                    onClick={handleBuyWithWallet}
+                    className="btn-outline disabled:opacity-60 disabled:cursor-not-allowed"
+                    disabled={buying || walletBuying}
+                  >
+                    {walletBuying ? 'Paying…' : `Pay with Wallet (${formatMoney(payable.final)})`}
+                  </button>
+                )}
+                <button
+                  onClick={handleBuyNow}
+                  className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={buying || walletBuying}
+                >
+                  {buying ? 'Processing…' : `Buy now (${formatMoney(payable.final)})`}
+                </button>
+              </>
             )}
-            <button
-              onClick={handleBuyNow}
-              className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={buying || walletBuying}
-            >
-              {buying ? 'Processing…' : `Buy now (${formatMoney(payable.final)})`}
-            </button>
             <WishlistButton designId={design.id} redirectPath={`/designs/${slug}`} />
           </div>
 
-          {session && !canPayWithWallet && payable.final > 0 && (
+          {session && !isFree && !canPayWithWallet && payable.final > 0 && (
             <p className="mt-3 text-xs text-ink-soft">
               Wallet balance ({formatMoney(walletBalance)}) is below the total due — use Razorpay to complete this purchase.
+            </p>
+          )}
+
+          {isFree && (
+            <p className="mt-3 text-xs text-ink-soft">
+              This design is free — sign in and download instantly. No payment required.
             </p>
           )}
 
