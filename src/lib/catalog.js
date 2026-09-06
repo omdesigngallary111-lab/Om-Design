@@ -61,9 +61,11 @@ export async function fetchSubcategories(categorySlug) {
 /**
  * filters: {
  *   categorySlug, subcategorySlug, format, minPrice, maxPrice, query,
+ *   designTypeId, area, needle,
  *   page, pageSize  — pagination (defaults: page 1, size 10)
  * }
  * All optional. `query` matches name and the 6-digit design_id.
+ * `area` / `needle` match the stored text values (synced from option names).
  */
 export async function fetchDesigns(filters = {}) {
   const {
@@ -73,6 +75,9 @@ export async function fetchDesigns(filters = {}) {
     minPrice,
     maxPrice,
     query,
+    designTypeId,
+    area,
+    needle,
     page = 1,
     pageSize = DEFAULT_PAGE_SIZE,
   } = filters
@@ -106,6 +111,9 @@ export async function fetchDesigns(filters = {}) {
     }
 
     if (format) q = q.eq('file_format', format)
+    if (designTypeId) q = q.eq('design_type_id', designTypeId)
+    if (area) q = q.eq('area', area)
+    if (needle) q = q.eq('needle', needle)
     if (minPrice != null) q = q.gte('price', minPrice)
     if (maxPrice != null) q = q.lte('price', maxPrice)
     const safe = sanitizeSearchTerm(query)
@@ -125,6 +133,9 @@ export async function fetchDesigns(filters = {}) {
   if (subcategorySlug) results = results.filter((d) => d.subcategory_slug === subcategorySlug)
   else if (categorySlug) results = results.filter((d) => d.category_slug === categorySlug)
   if (format) results = results.filter((d) => d.file_format === format)
+  if (designTypeId) results = results.filter((d) => d.design_type_id === designTypeId)
+  if (area) results = results.filter((d) => d.area === area)
+  if (needle) results = results.filter((d) => d.needle === needle)
   if (minPrice != null) results = results.filter((d) => d.price >= minPrice)
   if (maxPrice != null) results = results.filter((d) => d.price <= maxPrice)
   if (query) {
@@ -141,6 +152,50 @@ export async function fetchDesigns(filters = {}) {
   const total = results.length
   const { from, to } = pageRange(page, pageSize)
   return { designs: results.slice(from, to + 1), total, error: null }
+}
+
+/** Active design types for storefront filters. */
+export async function fetchActiveDesignTypes() {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('design_types')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+    if (error) return { designTypes: [], error: error.message }
+    return { designTypes: data ?? [], error: null }
+  }
+  return { designTypes: [], error: null }
+}
+
+/** Active area options for storefront filters. */
+export async function fetchActiveDesignAreas() {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('design_areas')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true })
+    if (error) return { areas: [], error: error.message }
+    return { areas: data ?? [], error: null }
+  }
+  return { areas: [], error: null }
+}
+
+/** Active needle options for storefront filters. */
+export async function fetchActiveDesignNeedles() {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('design_needles')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true })
+    if (error) return { needles: [], error: error.message }
+    return { needles: data ?? [], error: null }
+  }
+  return { needles: [], error: null }
 }
 
 export async function fetchDesignBySlug(slug) {

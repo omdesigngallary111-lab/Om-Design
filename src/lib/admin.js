@@ -299,6 +299,68 @@ export async function deleteDesignType(id) {
   return { error: error?.message ?? null }
 }
 
+// ---------- Design areas ----------
+
+export async function fetchAllDesignAreas() {
+  if (!supabase) return { areas: [], error: NOT_CONFIGURED_ERROR }
+  const { data, error } = await supabase
+    .from('design_areas')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true })
+  if (error) return { areas: [], error: error.message }
+  return { areas: data ?? [], error: null }
+}
+
+export async function createDesignArea(payload) {
+  if (!supabase) return { area: null, error: NOT_CONFIGURED_ERROR }
+  const { data, error } = await supabase.from('design_areas').insert(payload).select().single()
+  return { area: data ?? null, error: error?.message ?? null }
+}
+
+export async function updateDesignArea(id, payload) {
+  if (!supabase) return { area: null, error: NOT_CONFIGURED_ERROR }
+  const { data, error } = await supabase.from('design_areas').update(payload).eq('id', id).select().single()
+  return { area: data ?? null, error: error?.message ?? null }
+}
+
+export async function deleteDesignArea(id) {
+  if (!supabase) return { error: NOT_CONFIGURED_ERROR }
+  const { error } = await supabase.from('design_areas').delete().eq('id', id)
+  return { error: error?.message ?? null }
+}
+
+// ---------- Design needles ----------
+
+export async function fetchAllDesignNeedles() {
+  if (!supabase) return { needles: [], error: NOT_CONFIGURED_ERROR }
+  const { data, error } = await supabase
+    .from('design_needles')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true })
+  if (error) return { needles: [], error: error.message }
+  return { needles: data ?? [], error: null }
+}
+
+export async function createDesignNeedle(payload) {
+  if (!supabase) return { needle: null, error: NOT_CONFIGURED_ERROR }
+  const { data, error } = await supabase.from('design_needles').insert(payload).select().single()
+  return { needle: data ?? null, error: error?.message ?? null }
+}
+
+export async function updateDesignNeedle(id, payload) {
+  if (!supabase) return { needle: null, error: NOT_CONFIGURED_ERROR }
+  const { data, error } = await supabase.from('design_needles').update(payload).eq('id', id).select().single()
+  return { needle: data ?? null, error: error?.message ?? null }
+}
+
+export async function deleteDesignNeedle(id) {
+  if (!supabase) return { error: NOT_CONFIGURED_ERROR }
+  const { error } = await supabase.from('design_needles').delete().eq('id', id)
+  return { error: error?.message ?? null }
+}
+
 // ---------- Carousel slides ----------
 
 export async function fetchAllCarouselSlides() {
@@ -376,7 +438,7 @@ export async function fetchAllDesigns({
   let q = supabase
     .from('designs')
     .select(
-      '*, categories(name), subcategories(name, slug, category_id), design_types(id, name, is_active)',
+      '*, categories(name), subcategories(name, slug, category_id), design_types(id, name, is_active), design_areas(id, name, is_active), design_needles(id, name, is_active)',
       { count: 'exact' },
     )
 

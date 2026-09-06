@@ -299,7 +299,7 @@ export default function DesignDetail() {
         {design.categories?.slug && (
           <>
             <span>/</span>
-            <Link to={`/categories/${design.categories.slug}`} className="hover:text-maroon">
+            <Link to={`/designs?category=${design.categories.slug}`} className="hover:text-maroon">
               {design.categories.name}
             </Link>
           </>

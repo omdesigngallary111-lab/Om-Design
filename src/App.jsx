@@ -30,6 +30,7 @@ const AdminAdmissions = lazy(() => import('./pages/admin/Admissions.jsx'))
 const AdminAdmissionDetail = lazy(() => import('./pages/admin/AdmissionDetail.jsx'))
 const AdminAdmissionEdit = lazy(() => import('./pages/admin/AdmissionEdit.jsx'))
 const AdminDesignTypes = lazy(() => import('./pages/admin/DesignTypes.jsx'))
+const AdminAreaNeedle = lazy(() => import('./pages/admin/AreaNeedle.jsx'))
 const AdminCarousel = lazy(() => import('./pages/admin/CarouselSlides.jsx'))
 const CategoryDetail = lazy(() => import('./pages/CategoryDetail.jsx'))
 const AdminAdmissionNew = lazy(() => import('./pages/admin/AdmissionNew.jsx'))
@@ -146,6 +147,14 @@ export default function App() {
                     element={
                       <AdminOnly>
                         <AdminDesignTypes />
+                      </AdminOnly>
+                    }
+                  />
+                  <Route
+                    path="area-needle"
+                    element={
+                      <AdminOnly>
+                        <AdminAreaNeedle />
                       </AdminOnly>
                     }
                   />

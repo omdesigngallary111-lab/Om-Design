@@ -33,9 +33,7 @@ export default function Categories() {
           <p className="eyebrow text-gold-dark">Collections</p>
           <h1 className="text-4xl md:text-5xl mt-3">Browse by category</h1>
           <p className="mt-4 text-ink-soft max-w-xl leading-relaxed">
-            Every design is machine-tested before it&rsquo;s listed. Pick a
-            category to see the full range, or search across the catalogue.
-          </p>
+            Pick a category to open all matching designs, or search the full catalogue.          </p>
           <div className="mt-8 h-px bg-gold/30" />
         </div>
       </section>
@@ -56,7 +54,7 @@ export default function Categories() {
             {categories.map((cat) => (
               <CategoryCard
                 key={cat.id}
-                to={`/categories/${cat.slug}`}
+                to={`/designs?category=${cat.slug}`}
                 name={cat.name}
                 description={cat.description}
                 image={cat.image_url}

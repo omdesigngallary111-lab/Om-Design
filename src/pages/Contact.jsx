@@ -21,12 +21,9 @@ function GoldIcon({ children }) {
 }
 
 /**
- * JUDGMENT CALL: this form currently just shows a local "sent"
- * confirmation — there's no `contact_messages` table in the schema you
- * gave me, and no email/backend endpoint specified. Flagging so you can
- * decide the real destination (a Supabase table + admin view, or a
- * direct email service) before this goes live; submitting right now
- * does not actually deliver the message anywhere.
+ * Contact form opens WhatsApp (wa.me) with a prefilled enquiry.
+ * WhatsApp does not allow silent sends from the browser — the user
+ * confirms once in WhatsApp / WhatsApp Web. No backend required.
  */
 export default function Contact() {
   const { showToast } = useToast();
@@ -38,8 +35,21 @@ export default function Contact() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const message = form.message.trim();
+    const text = [
+      "Namaste! New enquiry from the Om Design & Classes website.",
+      "",
+      `Name: ${name}`,
+      `Email: ${email}`,
+      "",
+      message,
+    ].join("\n");
+
+    window.open(getWhatsAppUrl(text), "_blank", "noopener,noreferrer");
     setSent(true);
-    showToast("Message sent — we\u2019ll be in touch shortly.", {
+    showToast("Opening WhatsApp — tap Send to deliver your message.", {
       type: "success",
     });
   };
@@ -62,11 +72,29 @@ export default function Contact() {
           <div className="bg-white rounded-lg shadow-card border border-ink/5 p-6 md:p-8">
             <h2 className="text-2xl mb-6">Send a message</h2>
             {sent ? (
-              <div className="bg-sand rounded-md p-6">
+              <div className="bg-sand rounded-md p-6 space-y-4">
                 <p className="text-sm text-ink">
-                  Thank you, {form.name || "friend"} — your message has been
-                  received. We&rsquo;ll get back to you shortly.
+                  Thank you, {form.name || "friend"} — WhatsApp should have
+                  opened with your message ready. Tap <strong>Send</strong> there
+                  to deliver it to the studio.
                 </p>
+                <a
+                  href={getWhatsAppUrl(
+                    [
+                      "Namaste! New enquiry from the Om Design & Classes website.",
+                      "",
+                      `Name: ${form.name.trim()}`,
+                      `Email: ${form.email.trim()}`,
+                      "",
+                      form.message.trim(),
+                    ].join("\n"),
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary inline-flex"
+                >
+                  Open WhatsApp again
+                </a>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -128,8 +156,12 @@ export default function Contact() {
                   />
                 </div>
                 <button type="submit" className="btn-primary">
-                  Send message
+                  Send via WhatsApp
                 </button>
+                <p className="text-xs text-ink-soft">
+                  Opens WhatsApp to {STUDIO.phoneDisplay} with your message
+                  ready to send.
+                </p>
               </form>
             )}
           </div>

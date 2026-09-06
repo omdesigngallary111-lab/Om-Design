@@ -95,7 +95,11 @@ function FormBrandHeader({ formNumber, address }) {
         <div className="company-name">{ADMISSION_COMPANY.name}</div>
         <div className="company-address">{address}</div>
         <div className="company-mobile">
-          Mo. {ADMISSION_COMPANY.mobilePrint}
+          {ADMISSION_COMPANY.mobiles.map((m) => (
+            <span key={m.number} className="company-mobile-item">
+              Mo. {m.number} ({m.label})
+            </span>
+          ))}
         </div>
       </div>
       <div className="form-number-box">
@@ -127,7 +131,7 @@ function PrintPageHeader({ formNumber, address }) {
 /**
  * Two-page admission PDF template — proportions match the physical paper form.
  * Page 1: office form + tear-off student copy
- * Page 2: rules + fee ledger + admin signature
+ * Page 2: rules + tear-off fee strip (same height as student copy)
  */
 export default function AdmissionPrintDocument({
   admission,
@@ -262,7 +266,7 @@ export default function AdmissionPrintDocument({
           </span>
         </div>
 
-        <div className="student-copy">
+        <div className="student-copy tear-off-band">
           <FormBrandHeader formNumber={formNumber} address={address} />
           <div className="student-copy-body">
             <div className="student-copy-field">
@@ -287,12 +291,6 @@ export default function AdmissionPrintDocument({
                 </span>
               </div>
             </div>
-            {/* <div className="student-copy-field student-copy-package">
-              <div className="student-copy-label">{t.package}</div>
-              <div className="student-copy-value">
-                {admission?.package ?? ""}
-              </div>
-            </div> */}
           </div>
         </div>
       </div>
@@ -329,19 +327,26 @@ export default function AdmissionPrintDocument({
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="rules-fee-section">
-            <div className="rules-fee-title">{t.feeWarning}</div>
-            <FeeTable
-              installments={installments}
-              labels={t}
-              tableClass="rules-fee-table"
-            />
-            <div className="administrator-signature">
-              <div className="signature-field inline-label">
-                <span>{t.administratorSignature}</span>
-                <div className="signature-line" />
-              </div>
+        <div className="cut-line">
+          <span className="scissors" aria-hidden="true">
+            ✂
+          </span>
+        </div>
+
+        {/* Tear-off band — same height/width as page-1 .student-copy for aligned cutting */}
+        <div className="tear-off-band rules-fee-section">
+          <div className="rules-fee-title">{t.feeWarning}</div>
+          <FeeTable
+            installments={installments}
+            labels={t}
+            tableClass="rules-fee-table"
+          />
+          <div className="administrator-signature">
+            <div className="signature-field inline-label">
+              <span>{t.administratorSignature}</span>
+              <div className="signature-line" />
             </div>
           </div>
         </div>

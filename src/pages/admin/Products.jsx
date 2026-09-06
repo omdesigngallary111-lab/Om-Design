@@ -12,12 +12,15 @@ import {
   fetchAllDesigns,
   fetchAllSubcategories,
   fetchAllDesignTypes,
+  fetchAllDesignAreas,
+  fetchAllDesignNeedles,
   createDesign,
   updateDesign,
   deleteDesign,
   uploadProductImage,
   uploadDesignFile,
 } from "../../lib/admin.js";
+
 import PageHeader from "../../components/admin/PageHeader.jsx";
 import SearchBar from "../../components/admin/SearchBar.jsx";
 import Badge from "../../components/admin/Badge.jsx";
@@ -58,8 +61,8 @@ const emptyForm = {
   subcategory_id: "",
   design_type_id: "",
   file_format: FILE_FORMATS[0],
-  area: "",
-  needle: "",
+  area_id: "",
+  needle_id: "",
   tags: "",
   is_featured: false,
   is_active: true,
@@ -91,6 +94,8 @@ export default function Products() {
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [designTypes, setDesignTypes] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [needles, setNeedles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -142,6 +147,8 @@ export default function Products() {
     fetchCategories().then(({ categories: c }) => setCategories(c));
     fetchAllSubcategories().then(({ subcategories: s }) => setSubcategories(s));
     fetchAllDesignTypes().then(({ designTypes: t }) => setDesignTypes(t));
+    fetchAllDesignAreas().then(({ areas: a }) => setAreas(a));
+    fetchAllDesignNeedles().then(({ needles: n }) => setNeedles(n));
   }, []);
 
   useEffect(() => {
@@ -167,6 +174,16 @@ export default function Products() {
     return designTypes.filter((t) => t.is_active || t.id === selectedId);
   }, [designTypes, form.design_type_id]);
 
+  const areaOptions = useMemo(() => {
+    const selectedId = form.area_id;
+    return areas.filter((a) => a.is_active || a.id === selectedId);
+  }, [areas, form.area_id]);
+
+  const needleOptions = useMemo(() => {
+    const selectedId = form.needle_id;
+    return needles.filter((n) => n.is_active || n.id === selectedId);
+  }, [needles, form.needle_id]);
+
   const openEdit = (d) => {
     openEditModal(
       d.id,
@@ -179,8 +196,8 @@ export default function Products() {
         subcategory_id: d.subcategory_id ?? "",
         design_type_id: d.design_type_id ?? "",
         file_format: d.file_format ?? FILE_FORMATS[0],
-        area: d.area ?? "",
-        needle: d.needle ?? "",
+        area_id: d.area_id ?? "",
+        needle_id: d.needle_id ?? "",
         tags: (d.tags ?? []).join(", "),
         is_featured: !!d.is_featured,
         is_active: d.is_active !== false,
@@ -278,8 +295,10 @@ export default function Products() {
       subcategory_id: form.subcategory_id || null,
       design_type_id: form.design_type_id || null,
       file_format: form.file_format,
-      area: form.area.trim() || null,
-      needle: form.needle.trim() || null,
+      area_id: form.area_id || null,
+      needle_id: form.needle_id || null,
+      area: areas.find((a) => a.id === form.area_id)?.name ?? null,
+      needle: needles.find((n) => n.id === form.needle_id)?.name ?? null,
       tags: form.tags
         ? form.tags
             .split(",")
@@ -737,28 +756,40 @@ export default function Products() {
                 </select>
               </Field>
             </div>
-            <div className="grid sm:grid-cols-1 gap-4">
+            <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Area" htmlFor="product-area">
-                <input
+                <select
                   id="product-area"
-                  value={form.area}
+                  value={form.area_id}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, area: e.target.value }))
+                    setForm((f) => ({ ...f, area_id: e.target.value }))
                   }
-                  className="admin-input"
-                  placeholder="160 mm"
-                />
+                  className="admin-select"
+                >
+                  <option value="">Select area</option>
+                  {areaOptions.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
               </Field>
               <Field label="Needle" htmlFor="product-needle">
-                <input
+                <select
                   id="product-needle"
-                  value={form.needle}
+                  value={form.needle_id}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, needle: e.target.value }))
+                    setForm((f) => ({ ...f, needle_id: e.target.value }))
                   }
-                  className="admin-input"
-                  placeholder="75/11"
-                />
+                  className="admin-select"
+                >
+                  <option value="">Select needle</option>
+                  {needleOptions.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name}
+                    </option>
+                  ))}
+                </select>
               </Field>
             </div>
             <Field

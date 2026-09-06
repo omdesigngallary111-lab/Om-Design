@@ -7,6 +7,11 @@
   --form-olive: #4a4628;
   --form-title: #68705d;
   --form-stamp: #b33;
+  /*
+   * Shared height for page-1 student copy + page-2 fee strip so both
+   * tear-offs are the same size when cut from the printed sheets.
+   */
+  --tear-off-height: 58mm;
   box-sizing: border-box;
   font-family: Arial, Helvetica, "Noto Sans Gujarati", sans-serif;
   color: var(--form-ink);
@@ -117,9 +122,19 @@
 .admission-print-root .company-mobile {
   margin-top: 0.6mm;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 5mm;
+  line-height: 1.25;
+  max-width: 118mm;
+}
+
+.admission-print-root .company-mobile-item {
+  white-space: nowrap;
 }
 
 .admission-print-root .form-number-box {
@@ -501,7 +516,7 @@
   object-fit: contain;
 }
 
-/* ---------- Cut + student copy ---------- */
+/* ---------- Cut + matched tear-off bands (page 1 + page 2) ---------- */
 .admission-print-root .cut-line {
   flex-shrink: 0;
   border-top: 1.5px dashed #444;
@@ -519,8 +534,15 @@
   line-height: 1;
 }
 
-.admission-print-root .student-copy {
+/*
+ * Both tear-offs share the same fixed height and full content width
+ * so cutting page 1 student copy and page 2 fee strip yields equal pieces.
+ */
+.admission-print-root .tear-off-band {
   flex-shrink: 0;
+  height: var(--tear-off-height);
+  min-height: var(--tear-off-height);
+  max-height: var(--tear-off-height);
   border: 1px solid var(--form-border);
   background: #fff;
   position: relative;
@@ -534,7 +556,8 @@
 }
 
 .admission-print-root .student-copy-body {
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 0;
   background: #fff;
   padding: 3mm 4mm 3.5mm;
   display: flex;
@@ -683,10 +706,8 @@
 }
 
 .admission-print-root .rules-fee-section {
-  flex-shrink: 0;
-  margin-top: 4mm;
-  border: 1px solid #555;
-  padding: 4mm 4mm 3.5mm;
+  padding: 3mm 4mm 3mm;
+  justify-content: space-between;
 }
 
 .admission-print-root .aadhaar-section {
@@ -787,23 +808,30 @@
 }
 
 .admission-print-root .rules-fee-title {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: bold;
   text-align: center;
-  margin-bottom: 3mm;
-  line-height: 1.35;
+  margin-bottom: 2mm;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.admission-print-root .rules-fee-section .rules-fee-table {
+  flex-shrink: 0;
 }
 
 .admission-print-root .administrator-signature {
   display: flex;
   justify-content: flex-end;
-  margin-top: 5mm;
+  margin-top: auto;
+  padding-top: 2mm;
   padding-right: 2mm;
+  flex-shrink: 0;
 }
 
 .admission-print-root .rules-fee-table th,
 .admission-print-root .rules-fee-table td {
-  height: 9.5mm;
+  height: 8.5mm;
 }
 
 /* ---------- Preview / PDF export ---------- */

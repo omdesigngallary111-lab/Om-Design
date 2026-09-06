@@ -6,7 +6,11 @@ export const ADMISSION_COMPANY = {
     "1st Floor, Bhagvati Ras Ni Upar, Ghanshyam Nagar, L.H. Road, Surat.",
   addressGu:
     "1st Floor, Bhagvati Ras Ni Upar, Ghanshyam Nagar, L.H. Road, Surat.",
-  mobilePrint: "9714326892",
+  /** Printed header contact lines — keep short labels for the yellow band */
+  mobiles: [
+    { number: "9714326892", label: "BS Sir" },
+    { number: "8866401539", label: "Office" },
+  ],
 };
 
 export const rules = {

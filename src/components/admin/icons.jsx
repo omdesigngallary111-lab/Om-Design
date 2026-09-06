@@ -217,3 +217,13 @@ export function IconChevronDown(props) {
     </Svg>
   )
 }
+
+/** Ruler / sizing — used for Area & Needle admin */
+export function IconRuler(props) {
+  return (
+    <Svg {...props}>
+      <path d="M4 8h16v8H4z" />
+      <path d="M8 8v3M12 8v5M16 8v3M20 8v5" />
+    </Svg>
+  )
+}

@@ -125,7 +125,7 @@ export default function Home() {
             {categories.slice(0, 3).map((cat) => (
               <CategoryCard
                 key={cat.id}
-                to={`/categories/${cat.slug}`}
+                to={`/designs?category=${cat.slug}`}
                 name={cat.name}
                 description={cat.description}
                 image={cat.image_url}
