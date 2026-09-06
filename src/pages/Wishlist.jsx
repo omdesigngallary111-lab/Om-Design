@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useClientPagination } from '../hooks/useClientPagination.js'
 import { fetchWishlistDesigns, removeFromWishlist } from '../lib/wishlist.js'
+import { stripHtml } from '../lib/html.js'
 
 export default function Wishlist() {
   const { user, configured } = useAuth()
@@ -72,7 +73,7 @@ export default function Wishlist() {
                 imageAlt={d.name}
                 eyebrow={d.file_format}
                 title={d.name}
-                description={d.description}
+                description={stripHtml(d.description)}
                 topLeft={d.is_best_seller ? <BestSellerBadge /> : null}
                 topRight={d.is_pinned ? <PinBadge /> : null}
                 footer={
