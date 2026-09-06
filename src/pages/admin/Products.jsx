@@ -345,11 +345,20 @@ export default function Products() {
   const handleDelete = async () => {
     if (!pendingDelete) return;
     setDeleting(true);
-    const { error: err } = await deleteDesign(pendingDelete.id);
+    const { error: err, deactivated, message } = await deleteDesign(
+      pendingDelete.id,
+    );
     setDeleting(false);
     if (err) {
       setError(err);
       showToast(err, { type: "error" });
+    } else if (deactivated) {
+      showToast(
+        message ||
+          "Product deactivated because it has purchase history.",
+        { type: "info" },
+      );
+      load();
     } else {
       showToast("Product deleted.", { type: "info" });
       load();
@@ -852,10 +861,10 @@ export default function Products() {
         title="Delete product"
         description={
           pendingDelete
-            ? `Delete “${pendingDelete.name}”? This can’t be undone.`
+            ? `Remove “${pendingDelete.name}”? If anyone has purchased it, it will be deactivated instead of permanently deleted so downloads keep working.`
             : ""
         }
-        confirmLabel="Delete product"
+        confirmLabel="Remove product"
       />
 
       <ImagePreviewModal

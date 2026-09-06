@@ -503,10 +503,56 @@ export async function updateDesign(id, payload) {
   return { design: data ?? null, error: error?.message ?? null }
 }
 
+/**
+ * Hard-delete when the design was never ordered.
+ * If any order / order_item references it, soft-deactivate instead —
+ * purchase history and re-downloads must keep working.
+ */
 export async function deleteDesign(id) {
-  if (!supabase) return { error: NOT_CONFIGURED_ERROR }
+  if (!supabase) return { error: NOT_CONFIGURED_ERROR, deactivated: false }
+
+  const [{ count: orderCount, error: orderErr }, { count: itemCount, error: itemErr }] =
+    await Promise.all([
+      supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('design_id', id),
+      supabase
+        .from('order_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('design_id', id),
+    ])
+
+  // order_items table may not exist yet on an older DB — ignore that miss.
+  const hasOrderItemsTable = !(itemErr && /order_items|schema cache/i.test(itemErr.message))
+  if (orderErr) return { error: orderErr.message, deactivated: false }
+  if (hasOrderItemsTable && itemErr) {
+    return { error: itemErr.message, deactivated: false }
+  }
+
+  const referenced =
+    (orderCount ?? 0) > 0 || (hasOrderItemsTable && (itemCount ?? 0) > 0)
+
+  if (referenced) {
+    const { error } = await supabase
+      .from('designs')
+      .update({ is_active: false })
+      .eq('id', id)
+    if (error) return { error: error.message, deactivated: false }
+
+    // Drop from open carts so buyers don't try to check out a removed product.
+    await supabase.from('cart_items').delete().eq('design_id', id)
+
+    return {
+      error: null,
+      deactivated: true,
+      message:
+        'This design has purchase history, so it was deactivated instead of permanently deleted. Past buyers can still re-download.',
+    }
+  }
+
   const { error } = await supabase.from('designs').delete().eq('id', id)
-  return { error: error?.message ?? null }
+  return { error: error?.message ?? null, deactivated: false }
 }
 
 export async function uploadProductImage(file) {
