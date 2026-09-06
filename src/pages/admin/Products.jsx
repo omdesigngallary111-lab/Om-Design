@@ -65,6 +65,8 @@ const emptyForm = {
   needle_id: "",
   tags: "",
   is_featured: false,
+  is_pinned: false,
+  is_best_seller: false,
   is_active: true,
   thumbnail_url: "",
   design_file_url: "",
@@ -200,6 +202,8 @@ export default function Products() {
         needle_id: d.needle_id ?? "",
         tags: (d.tags ?? []).join(", "),
         is_featured: !!d.is_featured,
+        is_pinned: !!d.is_pinned,
+        is_best_seller: !!d.is_best_seller,
         is_active: d.is_active !== false,
         thumbnail_url: d.thumbnail_url ?? "",
         design_file_url: d.design_file_url ?? "",
@@ -322,6 +326,8 @@ export default function Products() {
             .filter(Boolean)
         : [],
       is_featured: form.is_featured,
+      is_pinned: form.is_pinned,
+      is_best_seller: form.is_best_seller,
       is_active: form.is_active,
       thumbnail_url: form.thumbnail_url || null,
       design_file_url: form.design_file_url || null,
@@ -492,6 +498,10 @@ export default function Products() {
                       {d.is_featured && (
                         <Badge variant="featured">Featured</Badge>
                       )}
+                      {d.is_pinned && <Badge variant="admin">Pinned</Badge>}
+                      {d.is_best_seller && (
+                        <Badge variant="featured">Best seller</Badge>
+                      )}
                     </div>
                   </td>
                   <ActionsCell>
@@ -539,6 +549,13 @@ export default function Products() {
                         {d.is_active ? "Active" : "Draft"}
                       </Badge>
                       <Badge variant="format">{d.file_format}</Badge>
+                      {d.is_featured && (
+                        <Badge variant="featured">Featured</Badge>
+                      )}
+                      {d.is_pinned && <Badge variant="admin">Pinned</Badge>}
+                      {d.is_best_seller && (
+                        <Badge variant="featured">Best seller</Badge>
+                      )}
                     </div>
                   </div>
                   <RowActions
@@ -840,13 +857,25 @@ export default function Products() {
                 checked={form.is_featured}
                 onChange={(v) => setForm((f) => ({ ...f, is_featured: v }))}
                 label="Featured"
-                description="Highlight this design on the storefront."
+                description="Highlight this design on the home page."
               />
               <Toggle
                 checked={form.is_active}
                 onChange={(v) => setForm((f) => ({ ...f, is_active: v }))}
                 label="Active"
                 description="Visible in the public catalogue."
+              />
+              <Toggle
+                checked={form.is_pinned}
+                onChange={(v) => setForm((f) => ({ ...f, is_pinned: v }))}
+                label="Pinned"
+                description="Keep this design at the top of All Designs."
+              />
+              <Toggle
+                checked={form.is_best_seller}
+                onChange={(v) => setForm((f) => ({ ...f, is_best_seller: v }))}
+                label="Best seller"
+                description="Show a Best seller badge on the design card."
               />
             </div>
           </FormSection>

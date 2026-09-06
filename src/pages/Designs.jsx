@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import Card from '../components/Card.jsx'
 import WishlistButton from '../components/WishlistButton.jsx'
+import { BestSellerBadge, PinBadge } from '../components/DesignBadges.jsx'
 import Seo from '../components/Seo.jsx'
 import Pagination from '../components/Pagination.jsx'
 import { stripHtml } from '../lib/html.js'
@@ -568,12 +569,18 @@ export default function Designs() {
                     title={d.name}
                     description={stripHtml(d.description)}
                     footer={<p className="font-semibold text-maroon">₹{d.price}</p>}
+                    topLeft={
+                      d.is_best_seller ? <BestSellerBadge /> : null
+                    }
                     topRight={
-                      <WishlistButton
-                        designId={d.id}
-                        variant="icon"
-                        redirectPath={`${location.pathname}${location.search}`}
-                      />
+                      <div className="flex flex-col items-end gap-2">
+                        {d.is_pinned ? <PinBadge /> : null}
+                        <WishlistButton
+                          designId={d.id}
+                          variant="icon"
+                          redirectPath={`${location.pathname}${location.search}`}
+                        />
+                      </div>
                     }
                   />
                 ))}

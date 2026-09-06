@@ -10,6 +10,7 @@ export default function Card({
   footer,
   href,
   to,
+  topLeft,
   topRight,
 }) {
   const commonProps = {
@@ -37,7 +38,10 @@ export default function Card({
             </span>
           </div>
         )}
-        {topRight && <div className="absolute top-3 right-3">{topRight}</div>}
+        {topLeft && (
+          <div className="absolute top-3 left-3 z-[1] pointer-events-none">{topLeft}</div>
+        )}
+        {topRight && <div className="absolute top-3 right-3 z-[1]">{topRight}</div>}
       </div>
       <div className="p-5 flex flex-col gap-1.5 flex-1">
         {eyebrow && <p className="eyebrow text-[11px]">{eyebrow}</p>}

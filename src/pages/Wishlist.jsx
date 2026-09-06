@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Section from '../components/Section.jsx'
 import Card from '../components/Card.jsx'
 import Seo from '../components/Seo.jsx'
+import { BestSellerBadge, PinBadge } from '../components/DesignBadges.jsx'
 import Pagination from '../components/Pagination.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
@@ -72,6 +73,8 @@ export default function Wishlist() {
                 eyebrow={d.file_format}
                 title={d.name}
                 description={d.description}
+                topLeft={d.is_best_seller ? <BestSellerBadge /> : null}
+                topRight={d.is_pinned ? <PinBadge /> : null}
                 footer={
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-maroon">₹{d.price}</p>

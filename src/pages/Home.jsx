@@ -10,6 +10,7 @@ import HeroCarousel, {
 } from "../components/HeroCarousel.jsx";
 import Seo from "../components/Seo.jsx";
 import WishlistButton from "../components/WishlistButton.jsx";
+import { BestSellerBadge, PinBadge } from "../components/DesignBadges.jsx";
 import { stripHtml } from "../lib/html.js";
 import {
   fetchActiveCarouselSlides,
@@ -71,15 +72,12 @@ export default function Home() {
     let active = true;
     Promise.all([
       fetchCategories(),
-      fetchDesigns({ page: 1, pageSize: 30 }),
+      fetchDesigns({ page: 1, pageSize: 6, featuredOnly: true }),
       fetchActiveCarouselSlides(),
     ]).then(([catRes, desRes, slideRes]) => {
       if (!active) return;
       setCategories(catRes.categories ?? []);
-      const all = desRes.designs ?? [];
-      const featured = all.filter((d) => d.is_featured);
-      const rest = all.filter((d) => !d.is_featured);
-      setDesigns([...featured, ...rest].slice(0, 6));
+      setDesigns(desRes.designs ?? []);
       setSlides(slideRes.slides ?? []);
       setLoadingCatalog(false);
       setHeroReady(true);
@@ -163,7 +161,7 @@ export default function Home() {
           </div>
         ) : designs.length === 0 ? (
           <p className="text-center text-ink-soft">
-            Designs will appear here as the catalogue fills.
+            Mark designs as Featured in admin to show them here.
           </p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -181,12 +179,16 @@ export default function Home() {
                 title={d.name}
                 description={stripHtml(d.description)}
                 footer={<p className="font-semibold text-maroon">₹{d.price}</p>}
+                topLeft={d.is_best_seller ? <BestSellerBadge /> : null}
                 topRight={
-                  <WishlistButton
-                    designId={d.id}
-                    variant="icon"
-                    redirectPath={`${location.pathname}${location.search}`}
-                  />
+                  <div className="flex flex-col items-end gap-2">
+                    {d.is_pinned ? <PinBadge /> : null}
+                    <WishlistButton
+                      designId={d.id}
+                      variant="icon"
+                      redirectPath={`${location.pathname}${location.search}`}
+                    />
+                  </div>
                 }
               />
             ))}

@@ -61,11 +61,12 @@ export async function fetchSubcategories(categorySlug) {
 /**
  * filters: {
  *   categorySlug, subcategorySlug, format, minPrice, maxPrice, query,
- *   designTypeId, area, needle,
+ *   designTypeId, area, needle, featuredOnly,
  *   page, pageSize  — pagination (defaults: page 1, size 10)
  * }
  * All optional. `query` matches name and the 6-digit design_id.
  * `area` / `needle` match the stored text values (synced from option names).
+ * `featuredOnly` — home “Featured designs” strip; only is_featured rows.
  */
 export async function fetchDesigns(filters = {}) {
   const {
@@ -78,6 +79,7 @@ export async function fetchDesigns(filters = {}) {
     designTypeId,
     area,
     needle,
+    featuredOnly = false,
     page = 1,
     pageSize = DEFAULT_PAGE_SIZE,
   } = filters
@@ -110,6 +112,7 @@ export async function fetchDesigns(filters = {}) {
         .eq('categories.slug', categorySlug)
     }
 
+    if (featuredOnly) q = q.eq('is_featured', true)
     if (format) q = q.eq('file_format', format)
     if (designTypeId) q = q.eq('design_type_id', designTypeId)
     if (area) q = q.eq('area', area)
@@ -123,6 +126,7 @@ export async function fetchDesigns(filters = {}) {
 
     const { from, to } = pageRange(page, pageSize)
     const { data, error, count } = await q
+      .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to)
     if (error) return { designs: [], total: 0, error: error.message }
@@ -130,6 +134,7 @@ export async function fetchDesigns(filters = {}) {
   }
 
   let results = mockDesigns.filter((d) => d.is_active)
+  if (featuredOnly) results = results.filter((d) => d.is_featured)
   if (subcategorySlug) results = results.filter((d) => d.subcategory_slug === subcategorySlug)
   else if (categorySlug) results = results.filter((d) => d.category_slug === categorySlug)
   if (format) results = results.filter((d) => d.file_format === format)
@@ -148,7 +153,11 @@ export async function fetchDesigns(filters = {}) {
         d.tags?.some((t) => t.toLowerCase().includes(q)),
     )
   }
-  results = [...results].reverse()
+  results = [...results].sort((a, b) => {
+    const pin = Number(!!b.is_pinned) - Number(!!a.is_pinned)
+    if (pin !== 0) return pin
+    return String(b.created_at || '').localeCompare(String(a.created_at || ''))
+  })
   const total = results.length
   const { from, to } = pageRange(page, pageSize)
   return { designs: results.slice(from, to + 1), total, error: null }
