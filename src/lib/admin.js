@@ -153,10 +153,31 @@ export async function fetchOrdersAdmin({
 } = {}) {
   if (!supabase) return { orders: [], total: 0, error: NOT_CONFIGURED_ERROR }
 
-  let q = supabase
-    .from('orders')
-    .select(
-      `
+  const selectWithItems = `
+      id,
+      amount,
+      status,
+      created_at,
+      razorpay_order_id,
+      profiles:user_id (
+        full_name,
+        phone,
+        email
+      ),
+      designs:design_id (
+        id,
+        name,
+        slug
+      ),
+      order_items (
+        id,
+        design_id,
+        design_name,
+        unit_price
+      )
+    `
+
+  const selectLegacy = `
       id,
       amount,
       status,
@@ -172,41 +193,46 @@ export async function fetchOrdersAdmin({
         name,
         slug
       )
-    `,
-      { count: 'exact' },
-    )
+    `
 
-  if (status !== 'all') q = q.eq('status', status)
+  const runQuery = async (selectSql) => {
+    let q = supabase.from('orders').select(selectSql, { count: 'exact' })
 
-  const safe = sanitizeSearchTerm(query)
-  if (safe) {
-    const orParts = [`razorpay_order_id.ilike.%${safe}%`]
-    if (UUID_RE.test(safe)) orParts.push(`id.eq.${safe}`)
+    if (status !== 'all') q = q.eq('status', status)
 
-    const [{ data: profiles }, { data: designs }] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id')
-        .or(`full_name.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`)
-        .limit(100),
-      supabase
-        .from('designs')
-        .select('id')
-        .or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`)
-        .limit(100),
-    ])
+    const safe = sanitizeSearchTerm(query)
+    if (safe) {
+      const orParts = [`razorpay_order_id.ilike.%${safe}%`]
+      if (UUID_RE.test(safe)) orParts.push(`id.eq.${safe}`)
 
-    const userIds = (profiles ?? []).map((row) => row.id)
-    const designIds = (designs ?? []).map((row) => row.id)
-    if (userIds.length) orParts.push(`user_id.in.(${userIds.join(',')})`)
-    if (designIds.length) orParts.push(`design_id.in.(${designIds.join(',')})`)
-    q = q.or(orParts.join(','))
+      const [{ data: profiles }, { data: designs }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id')
+          .or(`full_name.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`)
+          .limit(100),
+        supabase
+          .from('designs')
+          .select('id')
+          .or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`)
+          .limit(100),
+      ])
+
+      const userIds = (profiles ?? []).map((row) => row.id)
+      const designIds = (designs ?? []).map((row) => row.id)
+      if (userIds.length) orParts.push(`user_id.in.(${userIds.join(',')})`)
+      if (designIds.length) orParts.push(`design_id.in.(${designIds.join(',')})`)
+      q = q.or(orParts.join(','))
+    }
+
+    const { from, to } = pageRange(page, pageSize)
+    return q.order('created_at', { ascending: false }).range(from, to)
   }
 
-  const { from, to } = pageRange(page, pageSize)
-  const { data, error, count } = await q
-    .order('created_at', { ascending: false })
-    .range(from, to)
+  let { data, error, count } = await runQuery(selectWithItems)
+  if (error && /order_items/i.test(error.message)) {
+    ;({ data, error, count } = await runQuery(selectLegacy))
+  }
 
   if (error) return { orders: [], total: 0, error: error.message }
   return { orders: data ?? [], total: count ?? 0, error: null }

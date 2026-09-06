@@ -6,6 +6,7 @@ import { sanitizeHtml, stripHtml } from '../lib/html.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import WishlistButton from '../components/WishlistButton.jsx'
+import AddToCartButton from '../components/AddToCartButton.jsx'
 import Seo from '../components/Seo.jsx'
 import { callEdgeFunction, loadRazorpayCheckoutScript } from '../lib/razorpay.js'
 
@@ -41,6 +42,7 @@ export default function DesignDetail() {
   const [buying, setBuying] = useState(false)
   const [walletBuying, setWalletBuying] = useState(false)
   const [signedUrl, setSignedUrl] = useState(null)
+  const [downloads, setDownloads] = useState([])
 
   const [couponInput, setCouponInput] = useState('')
   const [appliedCode, setAppliedCode] = useState(null)
@@ -167,6 +169,7 @@ export default function DesignDetail() {
     }
 
     setSignedUrl(null)
+    setDownloads([])
     setWalletBuying(true)
     try {
       const res = await callEdgeFunction(
@@ -178,6 +181,7 @@ export default function DesignDetail() {
         session.access_token,
       )
       setSignedUrl(res.signed_url)
+      setDownloads(res.downloads || [])
       await refreshProfile()
       showToast('Paid with wallet. Download is ready.', { type: 'success' })
     } catch (err) {
@@ -201,6 +205,7 @@ export default function DesignDetail() {
     if (!design?.id) return
 
     setSignedUrl(null)
+    setDownloads([])
     setBuying(true)
 
     try {
@@ -243,6 +248,7 @@ export default function DesignDetail() {
             )
 
             setSignedUrl(verifyRes.signed_url)
+            setDownloads(verifyRes.downloads || [])
             showToast('Payment successful. Download is ready.', { type: 'success' })
           } catch (err) {
             const msg = err instanceof Error ? err.message : 'Payment verification failed'
@@ -486,6 +492,10 @@ export default function DesignDetail() {
           )}
 
           <div className="flex flex-wrap gap-4 mt-9 items-start">
+            <AddToCartButton
+              designId={design.id}
+              redirectPath={`/designs/${slug}`}
+            />
             {canPayWithWallet && (
               <button
                 onClick={handleBuyWithWallet}
@@ -500,7 +510,7 @@ export default function DesignDetail() {
               className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={buying || walletBuying}
             >
-              {buying ? 'Processing…' : `Pay with Razorpay (${formatMoney(payable.final)})`}
+              {buying ? 'Processing…' : `Buy now (${formatMoney(payable.final)})`}
             </button>
             <WishlistButton designId={design.id} redirectPath={`/designs/${slug}`} />
           </div>
@@ -511,22 +521,36 @@ export default function DesignDetail() {
             </p>
           )}
 
-          {signedUrl && (
-            <div className="mt-5">
-              <a
-                href={signedUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-primary inline-flex !rounded-xl !py-2.5 !px-5"
-              >
-                Download your file
-              </a>
+          {(downloads.length > 0 || signedUrl) && (
+            <div className="mt-5 space-y-3">
+              {downloads.length > 0 ? (
+                downloads.map((d) => (
+                  <a
+                    key={d.order_item_id}
+                    href={d.signed_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-primary inline-flex !rounded-xl !py-2.5 !px-5 mr-2"
+                  >
+                    Download {d.design_name || 'file'}
+                  </a>
+                ))
+              ) : (
+                <a
+                  href={signedUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary inline-flex !rounded-xl !py-2.5 !px-5"
+                >
+                  Download your file
+                </a>
+              )}
             </div>
           )}
 
           {!configured && (
             <p className="text-xs text-ink-soft/70 mt-4">
-              Wishlist and checkout will start working once Supabase is connected.
+              Wishlist, cart and checkout will start working once Supabase is connected.
             </p>
           )}
         </motion.div>

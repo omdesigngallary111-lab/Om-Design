@@ -25,7 +25,7 @@ export default function Account() {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [orders, setOrders] = useState([])
   const [ordersError, setOrdersError] = useState('')
-  const [downloadingOrderId, setDownloadingOrderId] = useState(null)
+  const [downloadingKey, setDownloadingKey] = useState(null)
   const [downloadUrls, setDownloadUrls] = useState({})
   const { pageItems, page, setPage, pageSize, setPageSize, total } =
     useClientPagination(orders)
@@ -73,30 +73,91 @@ export default function Account() {
 
     supabase
       .from('orders')
-      .select('id,status,amount,created_at,design_id,payment_method')
+      .select(
+        `
+        id,
+        status,
+        amount,
+        created_at,
+        design_id,
+        payment_method,
+        order_items (
+          id,
+          design_id,
+          design_name,
+          unit_price
+        )
+      `,
+      )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .then(async ({ data, error: err }) => {
         if (!active) return
         if (err) {
-          setOrdersError(err.message)
+          // Fallback if migration 024 not applied yet — keep account usable.
+          const legacy = await supabase
+            .from('orders')
+            .select('id,status,amount,created_at,design_id,payment_method')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+
+          if (!active) return
+          if (legacy.error) {
+            setOrdersError(legacy.error.message)
+            setOrdersLoading(false)
+            return
+          }
+
+          const rows = legacy.data ?? []
+          const designIds = rows.map((o) => o.design_id).filter(Boolean)
+          const { data: designs } = designIds.length
+            ? await supabase.from('designs').select('id,name').in('id', designIds)
+            : { data: [] }
+          const designMap = new Map((designs ?? []).map((d) => [d.id, d.name]))
+
+          setOrders(
+            rows.map((o) => ({
+              ...o,
+              items: o.design_id
+                ? [
+                    {
+                      id: o.id,
+                      design_id: o.design_id,
+                      design_name: designMap.get(o.design_id) || 'Design',
+                    },
+                  ]
+                : [],
+            })),
+          )
           setOrdersLoading(false)
           return
         }
 
         const rows = data ?? []
-        const designIds = rows.map((o) => o.design_id).filter(Boolean)
-        const { data: designs } = await supabase
-          .from('designs')
-          .select('id,name')
-          .in('id', designIds)
-
+        const missingDesignIds = rows
+          .filter((o) => !(o.order_items?.length) && o.design_id)
+          .map((o) => o.design_id)
+        const { data: designs } = missingDesignIds.length
+          ? await supabase.from('designs').select('id,name').in('id', missingDesignIds)
+          : { data: [] }
         const designMap = new Map((designs ?? []).map((d) => [d.id, d.name]))
+
         setOrders(
-          rows.map((o) => ({
-            ...o,
-            designName: designMap.get(o.design_id) || 'Design',
-          })),
+          rows.map((o) => {
+            const items =
+              o.order_items?.length > 0
+                ? o.order_items
+                : o.design_id
+                  ? [
+                      {
+                        id: o.id,
+                        design_id: o.design_id,
+                        design_name: designMap.get(o.design_id) || 'Design',
+                      },
+                    ]
+                  : []
+            return { ...o, items }
+          }),
         )
         setOrdersLoading(false)
       })
@@ -106,25 +167,43 @@ export default function Account() {
     }
   }, [configured, user?.id])
 
-  const handleGetDownloadLink = async (orderId) => {
+  const handleGetDownloadLink = async (orderId, orderItemId) => {
     if (!session?.access_token) {
       showToast('Please sign in again to download.', { type: 'error' })
       return
     }
-    setDownloadingOrderId(orderId)
+    const key = `${orderId}:${orderItemId || 'all'}`
+    setDownloadingKey(key)
     try {
+      const payload = { order_id: orderId }
+      // Only pass order_item_id when it is a real order_items row (not legacy synthetic).
+      if (orderItemId && orderItemId !== orderId) {
+        payload.order_item_id = orderItemId
+      }
       const res = await callEdgeFunction(
         'request-order-download-url',
-        { order_id: orderId },
+        payload,
         session.access_token,
       )
-      setDownloadUrls((prev) => ({ ...prev, [orderId]: res.signed_url }))
+
+      const next = { ...downloadUrls }
+      if (res.downloads?.length) {
+        for (const d of res.downloads) {
+          next[`${orderId}:${d.order_item_id}`] = d.signed_url
+        }
+        if (res.signed_url && orderItemId) {
+          next[key] = res.signed_url
+        }
+      } else if (res.signed_url) {
+        next[key] = res.signed_url
+      }
+      setDownloadUrls(next)
       showToast('Download link is ready.', { type: 'success' })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create download link'
       showToast(msg, { type: 'error' })
     } finally {
-      setDownloadingOrderId(null)
+      setDownloadingKey(null)
     }
   }
 
@@ -217,7 +296,7 @@ export default function Account() {
           <div>
             <h2 className="text-2xl font-display leading-tight">Your orders</h2>
             <p className="text-sm text-ink-soft mt-1">
-              Paid orders include short-lived signed download links.
+              Paid orders include short-lived signed download links for each design.
             </p>
           </div>
         </div>
@@ -250,73 +329,74 @@ export default function Account() {
           <p className="mt-6 text-sm text-ink-soft">No orders yet. Purchase a design to see it here.</p>
         ) : (
           <>
-            <div className="mt-6 bg-white rounded-xl border border-ink/10 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-widest2 text-ink-soft bg-sand/50 border-b border-ink/10">
-                      <th className="px-4 py-3 font-semibold">Status</th>
-                      <th className="px-4 py-3 font-semibold">Amount</th>
-                      <th className="px-4 py-3 font-semibold">Paid via</th>
-                      <th className="px-4 py-3 font-semibold">Date</th>
-                      <th className="px-4 py-3 font-semibold">Design</th>
-                      <th className="px-4 py-3 font-semibold text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ink/5">
-                    {pageItems.map((o) => {
-                      const statusTone =
-                        o.status === 'paid'
-                          ? 'bg-teal/10 text-teal'
-                          : o.status === 'failed'
-                            ? 'bg-maroon/10 text-maroon'
-                            : 'bg-ink/10 text-ink-soft'
-                      return (
-                        <tr key={o.id} className="align-top">
-                          <td className="px-4 py-4">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusTone}`}>
-                              {o.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-ink-soft">₹{o.amount}</td>
-                          <td className="px-4 py-4 text-ink-soft capitalize">
-                            {o.payment_method || '—'}
-                          </td>
-                          <td className="px-4 py-4 text-ink-soft">
-                            {o.created_at ? new Date(o.created_at).toLocaleDateString() : '—'}
-                          </td>
-                          <td className="px-4 py-4">
-                            <p className="font-semibold text-ink">{o.designName}</p>
-                          </td>
-                          <td className="px-4 py-4 text-right">
-                            {o.status !== 'paid' ? (
-                              <span className="text-xs text-ink-soft">—</span>
-                            ) : downloadUrls[o.id] ? (
-                              <a
-                                href={downloadUrls[o.id]}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="btn-primary inline-flex !rounded-xl !py-2.5 !px-5 text-xs"
-                              >
-                                Download your file
-                              </a>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={downloadingOrderId === o.id}
-                                onClick={() => handleGetDownloadLink(o.id)}
-                                className="btn-outline inline-flex !rounded-xl !py-2.5 !px-5 text-xs disabled:opacity-60"
-                              >
-                                {downloadingOrderId === o.id ? 'Generating…' : 'Get download link'}
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+            <div className="mt-6 space-y-4">
+              {pageItems.map((o) => {
+                const statusTone =
+                  o.status === 'paid'
+                    ? 'bg-teal/10 text-teal'
+                    : o.status === 'failed'
+                      ? 'bg-maroon/10 text-maroon'
+                      : 'bg-ink/10 text-ink-soft'
+                return (
+                  <article
+                    key={o.id}
+                    className="rounded-xl border border-ink/10 bg-white overflow-hidden"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/8 bg-sand/40 px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusTone}`}>
+                          {o.status}
+                        </span>
+                        <span className="text-sm text-ink-soft capitalize">
+                          {o.payment_method || '—'} · ₹{o.amount}
+                        </span>
+                      </div>
+                      <span className="text-xs text-ink-soft">
+                        {o.created_at ? new Date(o.created_at).toLocaleDateString() : '—'}
+                      </span>
+                    </div>
+
+                    <ul className="divide-y divide-ink/5">
+                      {(o.items?.length ? o.items : [{ id: o.id, design_name: 'Design' }]).map(
+                        (item) => {
+                          const key = `${o.id}:${item.id}`
+                          const url = downloadUrls[key]
+                          const busy = downloadingKey === key
+                          return (
+                            <li
+                              key={item.id}
+                              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                            >
+                              <p className="font-semibold text-ink">{item.design_name || 'Design'}</p>
+                              {o.status !== 'paid' ? (
+                                <span className="text-xs text-ink-soft">—</span>
+                              ) : url ? (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="btn-primary inline-flex !rounded-xl !py-2 !px-4 text-xs"
+                                >
+                                  Download
+                                </a>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => handleGetDownloadLink(o.id, item.id)}
+                                  className="btn-outline inline-flex !rounded-xl !py-2 !px-4 text-xs disabled:opacity-60"
+                                >
+                                  {busy ? 'Generating…' : 'Get download link'}
+                                </button>
+                              )}
+                            </li>
+                          )
+                        },
+                      )}
+                    </ul>
+                  </article>
+                )
+              })}
             </div>
             <Pagination
               page={page}

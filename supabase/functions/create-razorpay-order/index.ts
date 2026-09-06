@@ -3,6 +3,11 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveOffer } from "../_shared/offers.ts";
 import { corsPreflightResponse, jsonResponse } from "../_shared/cors.ts";
+import {
+  insertOrderItems,
+  resolveCheckoutLines,
+  sumLinePrices,
+} from "../_shared/checkout.ts";
 
 async function requireUser(req: Request) {
   const authHeader = req.headers.get("Authorization") || "";
@@ -43,11 +48,9 @@ serve(async (req) => {
   }
 
   const body = await req.json().catch(() => null);
-  const designId = body?.design_id;
+  const designId = body?.design_id ?? null;
+  const fromCart = body?.from_cart === true;
   const offerCode = body?.offer_code ?? null;
-  if (!designId || typeof designId !== "string") {
-    return jsonResponse({ error: "Missing or invalid design_id" }, 400);
-  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -56,32 +59,23 @@ serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  const { data: design, error: designErr } = await supabase
-    .from("designs")
-    .select("id, price, design_file_url, is_active")
-    .eq("id", designId)
-    .eq("is_active", true)
-    .maybeSingle();
+  const { lines, error: linesError, status: linesStatus } =
+    await resolveCheckoutLines(supabase, {
+      userId: user.id,
+      designId,
+      fromCart,
+    });
+  if (linesError) return jsonResponse({ error: linesError }, linesStatus);
 
-  if (designErr) return jsonResponse({ error: designErr.message }, 400);
-  if (!design) return jsonResponse({ error: "Design not found" }, 404);
+  const originalAmount = sumLinePrices(lines);
 
-  if (!design.design_file_url) {
-    return jsonResponse({ error: "Design file is missing" }, 400);
-  }
-
-  const priceNumber = typeof design.price === "string" ? Number(design.price) : design.price;
-  if (!Number.isFinite(priceNumber) || priceNumber <= 0) {
-    return jsonResponse({ error: "Invalid design price" }, 400);
-  }
-
-  // Re-validate offer at charge time — never trust an earlier client validate-offer call.
-  const offerResult = await resolveOffer(supabase, priceNumber, offerCode);
+  // Re-validate offer at charge time — never trust an earlier client preview.
+  const offerResult = await resolveOffer(supabase, originalAmount, offerCode);
   if (offerCode && !offerResult.applicable) {
     return jsonResponse({ error: offerResult.reason || "Offer is not applicable" }, 400);
   }
 
-  const finalAmount = offerResult.applicable ? offerResult.final_amount : priceNumber;
+  const finalAmount = offerResult.applicable ? offerResult.final_amount : originalAmount;
   const offerId = offerResult.applicable ? offerResult.offer_id : null;
 
   if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
@@ -91,7 +85,7 @@ serve(async (req) => {
   const amountPaise = Math.round(finalAmount * 100);
 
   // Razorpay restricts `receipt` length to <= 56 chars.
-  const receipt = `r_${user.id.slice(0, 8)}_${design.id.slice(0, 8)}_${Date.now()}`;
+  const receipt = `r_${user.id.slice(0, 8)}_${Date.now().toString(36)}`;
   const basicAuth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
 
   const rpRes = await fetch("https://api.razorpay.com/v1/orders", {
@@ -121,28 +115,42 @@ serve(async (req) => {
     return jsonResponse({ error: "Invalid Razorpay order response" }, 502);
   }
 
-  const { error: insertErr } = await supabase.from("orders").insert({
-    user_id: user.id,
-    design_id: design.id,
-    amount: finalAmount,
-    status: "pending",
-    razorpay_order_id: razorpayOrderId,
-    offer_id: offerId,
-    payment_method: "razorpay",
-  });
+  // Keep design_id = first line for legacy admin/account joins; full list in order_items.
+  const { data: order, error: insertErr } = await supabase
+    .from("orders")
+    .insert({
+      user_id: user.id,
+      design_id: lines[0].design_id,
+      amount: finalAmount,
+      status: "pending",
+      razorpay_order_id: razorpayOrderId,
+      offer_id: offerId,
+      payment_method: "razorpay",
+    })
+    .select("id")
+    .single();
 
-  if (insertErr) {
-    return jsonResponse({ error: insertErr.message }, 500);
+  if (insertErr || !order) {
+    return jsonResponse({ error: insertErr?.message || "Failed to create order" }, 500);
+  }
+
+  const { error: itemsErr } = await insertOrderItems(supabase, order.id, lines);
+  if (itemsErr) {
+    await supabase.from("orders").delete().eq("id", order.id);
+    return jsonResponse({ error: itemsErr }, 500);
   }
 
   return jsonResponse({
+    order_id: order.id,
     razorpay_order_id: razorpayOrderId,
     amount: amountPaise,
     currency: "INR",
     key_id: razorpayKeyId,
-    original_amount: priceNumber,
+    original_amount: originalAmount,
     discount_amount: offerResult.applicable ? offerResult.discount_amount : 0,
     final_amount: finalAmount,
+    item_count: lines.length,
+    from_cart: fromCart,
     offer: offerResult.applicable
       ? {
         offer_id: offerResult.offer_id,

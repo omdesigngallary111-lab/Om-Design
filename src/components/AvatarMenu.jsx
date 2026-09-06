@@ -107,6 +107,14 @@ export default function AvatarMenu({ compact = false }) {
               My Account
             </Link>
             <Link
+              to="/cart"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm hover:bg-sand"
+            >
+              Cart
+            </Link>
+            <Link
               to="/wishlist"
               role="menuitem"
               onClick={() => setOpen(false)}

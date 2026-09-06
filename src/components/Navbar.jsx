@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useCart } from '../context/CartContext.jsx'
 import AvatarMenu from './AvatarMenu.jsx'
 import BrandMark from './BrandMark.jsx'
 
@@ -81,6 +82,7 @@ function useFittingLinkCount(total) {
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { session, loading } = useAuth()
+  const { count: cartCount } = useCart()
   const navigate = useNavigate()
   const { containerRef, measureRef, visibleCount } = useFittingLinkCount(links.length)
 
@@ -94,8 +96,43 @@ export default function Navbar() {
     if (!showMore && open) setOpen(false)
   }, [showMore, open])
 
+  const cartLink = (
+    <Link
+      to={session ? '/cart' : '/login'}
+      state={session ? undefined : { from: '/cart' }}
+      aria-label={cartCount > 0 ? `Cart, ${cartCount} items` : 'Cart'}
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/10
+                 bg-white text-ink hover:border-maroon/30 hover:text-maroon transition-colors"
+    >
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          d="M6 6h15l-1.5 9h-12z"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6 6 5 3H2"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="9" cy="20" r="1.25" fill="currentColor" />
+        <circle cx="18" cy="20" r="1.25" fill="currentColor" />
+      </svg>
+      {session && cartCount > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full
+                         bg-maroon px-1 text-[10px] font-bold leading-none text-ivory">
+          {cartCount > 99 ? '99+' : cartCount}
+        </span>
+      )}
+    </Link>
+  )
+
   const accountSlot = (
     <>
+      {cartLink}
       {!loading && session && (
         <>
           <span className="lg:hidden">

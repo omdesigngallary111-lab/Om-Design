@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { CartProvider } from './context/CartContext.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminRoute, { AdminOnlyRoute } from './components/AdminRoute.jsx'
@@ -18,6 +19,7 @@ const Categories = lazy(() => import('./pages/Categories.jsx'))
 const Designs = lazy(() => import('./pages/Designs.jsx'))
 const DesignDetail = lazy(() => import('./pages/DesignDetail.jsx'))
 const Wishlist = lazy(() => import('./pages/Wishlist.jsx'))
+const Cart = lazy(() => import('./pages/Cart.jsx'))
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout.jsx'))
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard.jsx'))
 const AdminProducts = lazy(() => import('./pages/admin/Products.jsx'))
@@ -53,6 +55,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <CartProvider>
       <ToastProvider>
         <div className="min-h-screen flex flex-col">
           <a
@@ -88,6 +91,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <Wishlist />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/cart"
+                  element={
+                    <ProtectedRoute>
+                      <Cart />
                     </ProtectedRoute>
                   }
                 />
@@ -198,6 +209,7 @@ export default function App() {
           {!isAdmin && <ContactFab />}
         </div>
       </ToastProvider>
+      </CartProvider>
     </AuthProvider>
   )
 }

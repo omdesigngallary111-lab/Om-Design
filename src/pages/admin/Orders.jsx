@@ -53,6 +53,22 @@ function statusVariant(status) {
   return "draft";
 }
 
+function orderDesignLabel(order) {
+  const items = order.order_items || [];
+  if (items.length === 1) return items[0].design_name || order.designs?.name || "—";
+  if (items.length > 1) {
+    const first = items[0].design_name || "Design";
+    return `${first} +${items.length - 1} more`;
+  }
+  return order.designs?.name || "—";
+}
+
+function orderDesignSub(order) {
+  const items = order.order_items || [];
+  if (items.length > 1) return `${items.length} designs`;
+  return order.designs?.slug || items[0]?.design_id?.slice?.(0, 8) || "—";
+}
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState(0);
@@ -134,7 +150,6 @@ export default function Orders() {
             <AdminTable columns={tableColumns} minWidth={880}>
               {orders.map((order) => {
                 const customer = order.profiles || {};
-                const design = order.designs || {};
                 return (
                   <tr
                     key={order.id}
@@ -159,12 +174,12 @@ export default function Orders() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="max-w-[14rem]" title={design.name || undefined}>
+                      <div className="max-w-[14rem]" title={orderDesignLabel(order)}>
                         <p className="font-semibold text-ink truncate">
-                          {design.name || "—"}
+                          {orderDesignLabel(order)}
                         </p>
                         <p className="text-xs text-ink-soft truncate mt-0.5">
-                          {design.slug || "No slug"}
+                          {orderDesignSub(order)}
                         </p>
                       </div>
                     </td>
@@ -196,7 +211,6 @@ export default function Orders() {
           <div className="md:hidden space-y-3">
             {orders.map((order) => {
               const customer = order.profiles || {};
-              const design = order.designs || {};
               return (
                 <article key={order.id} className="admin-card p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -230,10 +244,10 @@ export default function Orders() {
                         Design
                       </p>
                       <p className="font-medium text-ink">
-                        {design.name || "—"}
+                        {orderDesignLabel(order)}
                       </p>
                       <p className="text-xs text-ink-soft">
-                        {design.slug || "No slug"}
+                        {orderDesignSub(order)}
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-3 pt-1">

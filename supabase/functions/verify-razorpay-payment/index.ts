@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsPreflightResponse, jsonResponse } from "../_shared/cors.ts";
+import { clearUserCart, createSignedDownloads } from "../_shared/checkout.ts";
 
 async function requireUser(req: Request) {
   const authHeader = req.headers.get("Authorization") || "";
@@ -60,6 +61,7 @@ serve(async (req) => {
   const razorpayOrderId = body?.razorpay_order_id;
   const razorpayPaymentId = body?.razorpay_payment_id;
   const razorpaySignature = body?.razorpay_signature;
+  const clearCart = body?.clear_cart === true;
 
   if (
     !razorpayOrderId || typeof razorpayOrderId !== "string" ||
@@ -95,36 +97,37 @@ serve(async (req) => {
     return jsonResponse({ error: "Signature verification failed" }, 400);
   }
 
-  const { error: paidErr } = await supabase
-    .from("orders")
-    .update({ status: "paid" })
-    .eq("id", order.id);
+  // Idempotent: already paid (e.g. webhook won the race) — still return downloads.
+  if (order.status !== "paid") {
+    const { error: paidErr } = await supabase
+      .from("orders")
+      .update({ status: "paid" })
+      .eq("id", order.id)
+      .neq("status", "paid");
 
-  if (paidErr) return jsonResponse({ error: paidErr.message }, 500);
+    if (paidErr) return jsonResponse({ error: paidErr.message }, 500);
 
-  // Increment coded/automatic offer usage only once (safe across verify + webhook).
-  if (order.offer_id) {
-    const { error: usageErr } = await supabase.rpc("consume_order_offer_usage", {
-      p_order_id: order.id,
-    });
-    if (usageErr) return jsonResponse({ error: usageErr.message }, 500);
+    if (order.offer_id) {
+      const { error: usageErr } = await supabase.rpc("consume_order_offer_usage", {
+        p_order_id: order.id,
+      });
+      if (usageErr) return jsonResponse({ error: usageErr.message }, 500);
+    }
   }
 
-  const { data: design, error: designErr } = await supabase
-    .from("designs")
-    .select("design_file_url")
-    .eq("id", order.design_id)
-    .maybeSingle();
+  const { downloads, signed_url, error: dlErr } = await createSignedDownloads(
+    supabase,
+    order,
+  );
+  if (dlErr) return jsonResponse({ error: dlErr }, 500);
 
-  if (designErr) return jsonResponse({ error: designErr.message }, 400);
-  if (!design?.design_file_url) return jsonResponse({ error: "Design file missing" }, 400);
+  if (clearCart) {
+    await clearUserCart(supabase, user.id);
+  }
 
-  const { data: signed, error: signedErr } = await supabase.storage
-    .from("design-files")
-    .createSignedUrl(design.design_file_url, 60 * 10);
-
-  if (signedErr) return jsonResponse({ error: signedErr.message }, 500);
-
-  return jsonResponse({ signed_url: signed.signedUrl });
+  return jsonResponse({
+    order_id: order.id,
+    signed_url,
+    downloads,
+  });
 });
-
