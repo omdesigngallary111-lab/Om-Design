@@ -16,6 +16,7 @@ import {
   fetchCategories,
   fetchDesigns,
 } from "../lib/catalog.js";
+import { LOGO_SRC, STUDIO } from "../data/studio.js";
 
 const steps = [
   {
@@ -38,21 +39,23 @@ const steps = [
 const testimonials = [
   {
     quote:
-      "The stitch count and sizing notes were spot on — the border ran perfectly on my first try.",
-    name: "Radhika M.",
-    role: "Boutique owner, Surat",
+      "We’ve been buying from Om Design & Classes for months. Files are consistent, support is quick and they understand real production needs.",
+    name: "Heer Vaghani",
   },
   {
     quote:
-      "Files are clean and well-digitised. My machine never skips a beat on these designs.",
-    name: "Priya S.",
-    role: "Home embroiderer",
+      "Design banavanu kam bov j saru che. Design banavine ape ema machine dhaga pn ocha kape ane production pan avr che. Ane lengha ma creation pn bov saru ape che. Ek var jarur visit karvi.",
+    name: "Jemish Sutariya",
   },
   {
     quote:
-      "I use these designs across my whole bridal line now. Consistent quality every time.",
-    name: "Anjali K.",
-    role: "Designer, Ahmedabad",
+      "Excellent embroidery design classes! Simple lessons, great support from teachers, and easy-to-understand software. Definitely recommend for beginners.",
+    name: "Jash Navadiya",
+  },
+  {
+    quote:
+      "An outstanding experience at Om Design & Classes! I highly recommend them — my experience here was truly fantastic across the board.",
+    name: "Ayush Kevadiya",
   },
 ];
 
@@ -225,16 +228,41 @@ export default function Home() {
       </Section>
 
       <section className="bg-sand">
-        <div className="max-w-6xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-0 md:gap-0 items-stretch">
-          <div className="relative min-h-[280px] md:min-h-[420px] bg-maroon overflow-hidden">
-            <div className="absolute inset-0 page-hero-gradient opacity-90" />
-            <div className="relative h-full flex flex-col justify-end p-8 md:p-10 text-ivory">
-              <p className="eyebrow text-gold-light">The studio</p>
-              <p className="font-display text-3xl md:text-4xl mt-3 leading-tight">
-                A drawing table, twenty years of thread
+        <div className="max-w-6xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-0 items-stretch">
+          {/* Visual brand panel — reads like a photo, not a text block */}
+          <div className="relative min-h-[300px] md:min-h-[420px] overflow-hidden bg-maroon">
+            <div className="absolute inset-0 page-hero-gradient opacity-95" aria-hidden />
+            <div
+              className="pointer-events-none absolute inset-0 opacity-30"
+              style={{
+                backgroundImage:
+                  "radial-gradient(ellipse at 30% 35%, rgba(251,246,238,0.18), transparent 55%)",
+              }}
+              aria-hidden
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="relative flex h-full flex-col items-center justify-center px-8 py-12 text-center"
+            >
+              <img
+                src={LOGO_SRC}
+                alt={STUDIO.name}
+                width={140}
+                height={140}
+                className="h-28 w-28 object-contain drop-shadow-sm md:h-36 md:w-36"
+              />
+              <p className="mt-6 font-display text-2xl text-ivory md:text-3xl lg:text-4xl">
+                {STUDIO.name}
               </p>
-            </div>
+              <p className="mt-3 max-w-[22rem] text-sm font-semibold uppercase tracking-[0.14em] text-gold-light md:text-base">
+                Meet for make design from sketch &amp; catalog
+              </p>
+            </motion.div>
           </div>
+
           <div className="bg-maroon-dark text-ivory p-8 md:p-12 flex flex-col justify-center">
             <h2 className="text-3xl md:text-4xl text-ivory leading-tight">
               Rooted in craft, built for the machine age
@@ -259,7 +287,7 @@ export default function Home() {
       </section>
 
       <Section eyebrow="From the hoop" title="Workshops that trust the files">
-        <div className="grid md:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid gap-6 sm:grid-cols-2 md:gap-8">
           {testimonials.map((t) => (
             <motion.figure
               key={t.name}
@@ -273,8 +301,9 @@ export default function Home() {
                 &ldquo;{t.quote}&rdquo;
               </blockquote>
               <figcaption className="mt-5">
-                <p className="text-sm font-semibold">{t.name}</p>
-                <p className="text-xs text-ink-soft/70">{t.role}</p>
+                <p className="text-sm font-semibold tracking-wide text-maroon">
+                  {t.name}
+                </p>
               </figcaption>
             </motion.figure>
           ))}
