@@ -295,6 +295,18 @@ export default function AdmissionDetail() {
                 />
                 <FieldRow label="Batch type" value={admission.batch_type} />
                 <FieldRow label="Package" value={admission.package} />
+                <FieldRow
+                  label="Join date"
+                  value={
+                    admission.join_date
+                      ? new Date(`${admission.join_date}T00:00:00`).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : null
+                  }
+                />
                 <FieldRow label="Aadhaar images" value={admission.aadhaar_card_urls?.length || null} />
                 <FieldRow label="Language" value={admission.preferred_language} />
                 <FieldRow

@@ -37,8 +37,10 @@ function formatAmount(value) {
 }
 
 function installmentColumns(installments) {
-  if (installments?.length > 0) return installments;
-  return Array.from({ length: 4 }, () => ({}));
+  // Always reserve 5 slots on the print ledger so office can fill by hand.
+  const cols = installments?.length > 0 ? [...installments] : [];
+  while (cols.length < 5) cols.push({});
+  return cols;
 }
 
 function computeTotal(installments) {
@@ -155,7 +157,9 @@ export default function AdmissionPrintDocument({
   const endParts = String(admission?.class_end_time ?? "")
     .split(/[:\s]/)
     .filter(Boolean);
-  const aadhaarImages = Array.isArray(aadhaarUrls) ? aadhaarUrls.filter(Boolean).slice(0, 2) : [];
+  const aadhaarImages = Array.isArray(aadhaarUrls)
+    ? aadhaarUrls.filter(Boolean).slice(0, 2)
+    : [];
 
   return (
     <div className="admission-print-root">
@@ -238,8 +242,16 @@ export default function AdmissionPrintDocument({
             </div>
 
             <div className="package-row">
-              <div className="package-label">{t.package}</div>
-              <div className="package-value">{admission?.package ?? ""}</div>
+              <div className="package-field">
+                <div className="package-label">{t.package}</div>
+                <div className="package-value">{admission?.package ?? ""}</div>
+              </div>
+              <div className="package-field package-field-join">
+                <div className="field-label">{t.joinDate}</div>
+                <div className="field-line">
+                  {formatDate(admission?.join_date)}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -358,7 +370,9 @@ export default function AdmissionPrintDocument({
           <div className="aadhaar-page-body">
             <div
               className={`aadhaar-vertical-stack ${
-                aadhaarImages.length === 1 ? "aadhaar-stack-single" : "aadhaar-stack-dual"
+                aadhaarImages.length === 1
+                  ? "aadhaar-stack-single"
+                  : "aadhaar-stack-dual"
               }`}
             >
               {aadhaarImages.map((url, index) => (

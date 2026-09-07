@@ -840,6 +840,7 @@ export async function createAdmission(payload) {
     class_end_time: payload.class_end_time,
     batch_type: payload.batch_type || null,
     package: payload.package || null,
+    join_date: payload.join_date || null,
     preferred_language: payload.preferred_language,
     agreed_to_terms: true,
     agreed_at: now,

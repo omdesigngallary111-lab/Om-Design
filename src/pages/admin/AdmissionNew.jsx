@@ -7,7 +7,7 @@ import { useToast } from "../../context/ToastContext.jsx";
 import { createAdmission } from "../../lib/admin.js";
 import { formCopy, rules } from "../../lib/i18n/admissionTranslations.js";
 
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_AADHAAR_UPLOADS = 2;
 const MOBILE_RE = /^[6-9]\d{9}$/;
 const BATCH_TYPES = ["A", "B", "C", "D", "E", "F", "G"];
@@ -23,6 +23,7 @@ const emptyForm = {
   class_end_time: "",
   batch_type: "",
   package: "",
+  join_date: "",
 };
 
 const inputClass =
@@ -191,6 +192,7 @@ export default function AdmissionNew() {
     if (!form.class_end_time.trim()) errors.class_end_time = t.errors.classEnd;
     if (!form.batch_type) errors.batch_type = t.errors.batchType;
     if (!form.package.trim()) errors.package = t.errors.package;
+    if (!form.join_date) errors.join_date = t.errors.joinDate;
     if (!signatureDataUrl) errors.signature = t.errors.signature;
     if (!agreed) errors.agree = t.errors.agree;
     setFieldErrors(errors);
@@ -295,6 +297,7 @@ export default function AdmissionNew() {
       class_end_time: form.class_end_time.trim(),
       batch_type: form.batch_type,
       package: form.package.trim(),
+      join_date: form.join_date || null,
       preferred_language: language,
     });
     setSubmitting(false);
@@ -654,22 +657,39 @@ export default function AdmissionNew() {
                   </div>
                 </FormField>
 
-                <FormField
-                  label={t.package}
-                  htmlFor="package"
-                  required
-                  error={fieldErrors.package}
-                >
-                  <input
-                    id="package"
-                    type="text"
-                    value={form.package}
-                    onChange={(e) => setField("package", e.target.value)}
-                    className={inputClass}
-                    placeholder={t.packagePlaceholder}
-                    aria-required="true"
-                  />
-                </FormField>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <FormField
+                    label={t.package}
+                    htmlFor="package"
+                    required
+                    error={fieldErrors.package}
+                  >
+                    <input
+                      id="package"
+                      type="text"
+                      value={form.package}
+                      onChange={(e) => setField("package", e.target.value)}
+                      className={inputClass}
+                      placeholder={t.packagePlaceholder}
+                      aria-required="true"
+                    />
+                  </FormField>
+                  <FormField
+                    label={t.joinDate}
+                    htmlFor="join_date"
+                    required
+                    error={fieldErrors.join_date}
+                  >
+                    <input
+                      id="join_date"
+                      type="date"
+                      value={form.join_date}
+                      onChange={(e) => setField("join_date", e.target.value)}
+                      className={inputClass}
+                      aria-required="true"
+                    />
+                  </FormField>
+                </div>
               </FormSection>
 
               <FormSection number={4} title={t.sectionRules}>

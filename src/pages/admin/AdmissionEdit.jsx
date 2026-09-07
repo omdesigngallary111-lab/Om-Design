@@ -47,6 +47,7 @@ export default function AdmissionEdit() {
         class_end_time: admission.class_end_time || '',
         batch_type: admission.batch_type || '',
         package: admission.package || '',
+        join_date: admission.join_date || '',
         preferred_language: admission.preferred_language === 'en' ? 'en' : 'gu',
         status: admission.status || 'pending',
         form_number: admission.form_number,
@@ -89,6 +90,7 @@ export default function AdmissionEdit() {
       class_end_time: form.class_end_time || null,
       batch_type: form.batch_type || null,
       package: form.package.trim() || null,
+      join_date: form.join_date || null,
       preferred_language: form.preferred_language,
       status: form.status,
     })
@@ -252,6 +254,16 @@ export default function AdmissionEdit() {
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
+              <label className="admin-label" htmlFor="join_date">Join date</label>
+              <input
+                id="join_date"
+                type="date"
+                className={inputClass}
+                value={form.join_date}
+                onChange={(e) => setField('join_date', e.target.value)}
+              />
+            </div>
+            <div>
               <label className="admin-label" htmlFor="preferred_language">Language</label>
               <select
                 id="preferred_language"
@@ -263,6 +275,8 @@ export default function AdmissionEdit() {
                 <option value="en">English</option>
               </select>
             </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="admin-label" htmlFor="status">Status</label>
               <select

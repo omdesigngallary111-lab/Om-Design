@@ -92,8 +92,8 @@ export default function Home() {
       <Seo
         brandFirst
         path="/"
-        title="Embroidery Designs & Classes in Surat"
-        description="Buy machine-ready embroidery designs (DST, EMB, DHE, DHP) for sarees & fabric, or join embroidery classes in Varachha, Surat. Crafted by Om Design & Classes."
+        title="Embroidery Designs & Classes, Surat"
+        description="Machine-ready DST, EMB, DHE & DHP embroidery designs for sarees & fabric. Embroidery classes in Varachha, Surat. Shop designs or visit our studio."
       />
 
       {!heroReady ? (
