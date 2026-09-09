@@ -23,11 +23,18 @@ export default function Pagination({
   const to = Math.min(page * pageSize, safeTotal)
 
   const goToPage = (nextPage) => {
+    // Blur before state/URL updates so mobile does not keep the button in view.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
     onPageChange(nextPage)
     scrollPageToTop()
   }
 
   const changePageSize = (nextSize) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
     onPageSizeChange?.(nextSize)
     scrollPageToTop()
   }

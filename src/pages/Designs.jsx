@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import Card from '../components/Card.jsx'
 import WishlistButton from '../components/WishlistButton.jsx'
 import { BestSellerBadge, PinBadge } from '../components/DesignBadges.jsx'
 import Seo from '../components/Seo.jsx'
 import Pagination from '../components/Pagination.jsx'
+import { scrollPageToTop } from '../components/ScrollToTop.jsx'
 import { stripHtml } from '../lib/html.js'
 import { DEFAULT_PAGE_SIZE } from '../lib/pagination.js'
 import {
@@ -93,6 +94,9 @@ export default function Designs() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  /** Skip the first paint; re-scroll only after real page/pageSize changes. */
+  const listingScrollReady = useRef(false)
+  const lastListingPageKey = useRef('')
 
   const categorySlug = params.get('category') || ''
   const subcategorySlug = params.get('subcategory') || ''
@@ -176,6 +180,22 @@ export default function Designs() {
     pageSize,
     designTypes,
   ])
+
+  // Designs fetch replaces the grid after pagination. Mobile browsers then
+  // scroll the still-focused Next/Previous control into view (mid-page).
+  // Re-jump once the new page has painted — only when page/pageSize changed.
+  useEffect(() => {
+    if (loading) return
+    const key = `${page}:${pageSize}`
+    if (!listingScrollReady.current) {
+      listingScrollReady.current = true
+      lastListingPageKey.current = key
+      return
+    }
+    if (lastListingPageKey.current === key) return
+    lastListingPageKey.current = key
+    scrollPageToTop()
+  }, [loading, page, pageSize])
 
   const updateParam = useCallback(
     (key, value) => {
@@ -518,7 +538,7 @@ export default function Designs() {
           <div className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>{filterPanel}</div>
         </aside>
 
-        <div>
+        <div id="designs-results">
           <div className="mb-5 flex items-center justify-between gap-3">
             <p className="text-sm text-ink-soft">
               {loading ? 'Loading…' : `${total} ${total === 1 ? 'design' : 'designs'}`}
