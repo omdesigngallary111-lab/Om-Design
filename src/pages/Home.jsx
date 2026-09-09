@@ -11,6 +11,7 @@ import HeroCarousel, {
 import Seo from "../components/Seo.jsx";
 import WishlistButton from "../components/WishlistButton.jsx";
 import { BestSellerBadge, PinBadge } from "../components/DesignBadges.jsx";
+import WelcomePromo from "../components/WelcomePromo.jsx";
 import { stripHtml } from "../lib/html.js";
 import {
   fetchActiveCarouselSlides,
@@ -105,6 +106,8 @@ export default function Home() {
       ) : (
         <StaticHomeHero />
       )}
+
+      <WelcomePromo />
 
       <Section
         eyebrow="Collections"

@@ -1,4 +1,5 @@
 import { PAGE_SIZE_OPTIONS, totalPages } from '../lib/pagination.js'
+import { scrollPageToTop } from './ScrollToTop.jsx'
 
 /**
  * Shared list pagination — admin tables, catalog grids, account lists.
@@ -21,6 +22,16 @@ export default function Pagination({
   const from = (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, safeTotal)
 
+  const goToPage = (nextPage) => {
+    onPageChange(nextPage)
+    scrollPageToTop()
+  }
+
+  const changePageSize = (nextSize) => {
+    onPageSizeChange?.(nextSize)
+    scrollPageToTop()
+  }
+
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 ${className}`}
@@ -42,7 +53,7 @@ export default function Pagination({
             <span className="sr-only">Rows per page</span>
             <select
               value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              onChange={(e) => changePageSize(Number(e.target.value))}
               className="appearance-none bg-white border border-ink/12 rounded-lg pl-3 pr-8 py-1.5
                          text-xs font-semibold text-ink cursor-pointer
                          focus:outline-none focus:border-maroon/35 focus:ring-2 focus:ring-maroon/10"
@@ -61,7 +72,7 @@ export default function Pagination({
           <button
             type="button"
             disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
+            onClick={() => goToPage(page - 1)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-ink/12 bg-white
                        text-ink hover:border-ink/25 disabled:opacity-40 disabled:cursor-not-allowed
                        transition-colors duration-150"
@@ -74,7 +85,7 @@ export default function Pagination({
           <button
             type="button"
             disabled={page >= pageCount}
-            onClick={() => onPageChange(page + 1)}
+            onClick={() => goToPage(page + 1)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-ink/12 bg-white
                        text-ink hover:border-ink/25 disabled:opacity-40 disabled:cursor-not-allowed
                        transition-colors duration-150"

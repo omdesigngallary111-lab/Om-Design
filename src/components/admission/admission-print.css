@@ -339,7 +339,7 @@
 .admission-print-root .reference-line {
   border-bottom: 1px dotted var(--form-line);
   min-height: 7mm;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0 1.5mm 1mm;
   margin-bottom: 1mm;
 }
