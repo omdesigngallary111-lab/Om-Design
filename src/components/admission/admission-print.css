@@ -388,6 +388,59 @@
   font-weight: bold;
 }
 
+/*
+ * Single-row key facts strip — same yellow language as Form No.
+ * Package | Join date stay side-by-side (never stack).
+ */
+.admission-print-root .key-info-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
+  border: 1.5px solid #222;
+  border-radius: 1.5mm;
+  background: var(--form-yellow);
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+}
+
+.admission-print-root .key-info-item {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 1mm 3.5mm;
+  text-align: left;
+}
+
+.admission-print-root .key-info-divider {
+  flex: 0 0 1.5px;
+  width: 1.5px;
+  align-self: stretch;
+  background: #222;
+}
+
+.admission-print-root .key-info-label {
+  display: inline;
+  /* font-family: Georgia, "Times New Roman", "Times", serif; */
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  margin: 0 2mm 0 0;
+  padding: 0;
+  color: #000;
+  white-space: nowrap;
+}
+
+.admission-print-root .key-info-value {
+  display: inline;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.25;
+  color: #000;
+  word-break: break-word;
+}
+
 .admission-print-root .package-row {
   display: flex;
   align-items: flex-end;

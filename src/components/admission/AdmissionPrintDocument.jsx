@@ -241,16 +241,19 @@ export default function AdmissionPrintDocument({
               </div>
             </div>
 
-            <div className="package-row">
-              <div className="package-field">
-                <div className="package-label">{t.package}</div>
-                <div className="package-value">{admission?.package ?? ""}</div>
+            <div className="key-info-strip">
+              <div className="key-info-item">
+                <span className="key-info-label">{t.package}</span>
+                <span className="key-info-value">
+                  {admission?.package ?? ""}
+                </span>
               </div>
-              <div className="package-field package-field-join">
-                <div className="field-label">{t.joinDate}</div>
-                <div className="field-line">
+              <div className="key-info-divider" aria-hidden="true" />
+              <div className="key-info-item">
+                <span className="key-info-label">{t.joinDate}</span>
+                <span className="key-info-value">
                   {formatDate(admission?.join_date)}
-                </div>
+                </span>
               </div>
             </div>
           </div>

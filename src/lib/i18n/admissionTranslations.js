@@ -174,7 +174,8 @@ export const formCopy = {
     uploadPhoto: "ફોટો અપલોડ કરો",
     changePhoto: "ફોટો બદલો",
     aadhaarLabel: "આધાર કાર્ડની ઇમેજ",
-    aadhaarHint: "વૈકલ્પિક. વધુમાં વધુ 2 JPG અથવા PNG ઇમેજ અપલોડ કરો, દરેક મેક્સ 2 MB.",
+    aadhaarHint:
+      "વૈકલ્પિક. વધુમાં વધુ 2 JPG અથવા PNG ઇમેજ અપલોડ કરો, દરેક મેક્સ 2 MB.",
     uploadAadhaar: "આધાર અપલોડ કરો",
     addAadhaar: "આધાર ઇમેજ ઉમેરો",
     changeAadhaar: "આધાર ઇમેજ બદલો",

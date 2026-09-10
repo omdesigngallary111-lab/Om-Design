@@ -581,7 +581,31 @@ export async function uploadDesignFile(file) {
 
 // ---------- Admissions ----------
 
-export async function fetchAdmissionStatusCounts() {
+/** YYYY-MM-DD → inclusive timestamptz bounds for created_at filters. */
+function createdAtStart(dateStr) {
+  return dateStr ? `${dateStr}T00:00:00` : null
+}
+
+function createdAtEnd(dateStr) {
+  return dateStr ? `${dateStr}T23:59:59.999` : null
+}
+
+function applyAdmissionDateFilters(q, { createdFrom, createdTo, joinFrom, joinTo } = {}) {
+  const fromTs = createdAtStart(createdFrom)
+  const toTs = createdAtEnd(createdTo)
+  if (fromTs) q = q.gte('created_at', fromTs)
+  if (toTs) q = q.lte('created_at', toTs)
+  if (joinFrom) q = q.gte('join_date', joinFrom)
+  if (joinTo) q = q.lte('join_date', joinTo)
+  return q
+}
+
+export async function fetchAdmissionStatusCounts({
+  createdFrom = '',
+  createdTo = '',
+  joinFrom = '',
+  joinTo = '',
+} = {}) {
   if (!supabase) {
     return {
       counts: { all: 0, pending: 0, reviewed: 0, enrolled: 0, rejected: 0 },
@@ -589,14 +613,21 @@ export async function fetchAdmissionStatusCounts() {
     }
   }
 
+  const dateFilters = { createdFrom, createdTo, joinFrom, joinTo }
   const statuses = ['pending', 'reviewed', 'enrolled', 'rejected']
   const [allRes, ...statusRes] = await Promise.all([
-    supabase.from('admissions').select('*', { count: 'exact', head: true }),
+    applyAdmissionDateFilters(
+      supabase.from('admissions').select('*', { count: 'exact', head: true }),
+      dateFilters,
+    ),
     ...statuses.map((status) =>
-      supabase
-        .from('admissions')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', status),
+      applyAdmissionDateFilters(
+        supabase
+          .from('admissions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', status),
+        dateFilters,
+      ),
     ),
   ])
 
@@ -620,6 +651,10 @@ export async function fetchAllAdmissions({
   pageSize = DEFAULT_PAGE_SIZE,
   query = '',
   status = 'all',
+  createdFrom = '',
+  createdTo = '',
+  joinFrom = '',
+  joinTo = '',
 } = {}) {
   if (!supabase) return { admissions: [], total: 0, error: NOT_CONFIGURED_ERROR }
 
@@ -637,6 +672,8 @@ export async function fetchAllAdmissions({
     if (/^\d+$/.test(safe)) orParts.push(`form_number.eq.${Number(safe)}`)
     q = q.or(orParts.join(','))
   }
+
+  q = applyAdmissionDateFilters(q, { createdFrom, createdTo, joinFrom, joinTo })
 
   const { from, to } = pageRange(page, pageSize)
   const { data, error, count } = await q

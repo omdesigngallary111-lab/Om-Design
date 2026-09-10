@@ -10,6 +10,9 @@ import Alert from "../../components/admin/Alert.jsx";
 import { AdminTable } from "../../components/admin/AdminTable.jsx";
 import { TableSkeleton } from "../../components/admin/Skeleton.jsx";
 import { IconFile } from "../../components/admin/icons.jsx";
+import DateRangeFilterPopover, {
+  DateRangeFilterChips,
+} from "../../components/admin/DateRangeFilterPopover.jsx";
 import {
   fetchAllAdmissions,
   fetchAdmissionStatusCounts,
@@ -17,13 +20,16 @@ import {
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination.js";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue.js";
 
-function formatSubmitted(value) {
+function formatDay(value) {
   if (!value) return "—";
+  const raw = String(value);
+  const date = raw.length <= 10 ? new Date(`${raw}T00:00:00`) : new Date(raw);
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function statusVariant(status) {
@@ -38,10 +44,18 @@ const tableColumns = [
   { key: "form_number", label: "Form #" },
   { key: "student", label: "Student" },
   { key: "mobile", label: "Mobile" },
-  { key: "submitted", label: "Submitted" },
+  { key: "submitted", label: "Created" },
+  { key: "join_date", label: "Join date" },
   { key: "status", label: "Status" },
   { key: "actions", label: "Actions", align: "right" },
 ];
+
+const emptyDates = {
+  createdFrom: "",
+  createdTo: "",
+  joinFrom: "",
+  joinTo: "",
+};
 
 export default function Admissions() {
   const [admissions, setAdmissions] = useState([]);
@@ -57,16 +71,27 @@ export default function Admissions() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [dates, setDates] = useState(emptyDates);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const debouncedQuery = useDebouncedValue(query);
-  const hasFilters = Boolean(debouncedQuery.trim()) || statusFilter !== "all";
+
+  const hasDateFilters = Boolean(
+    dates.createdFrom ||
+      dates.createdTo ||
+      dates.joinFrom ||
+      dates.joinTo,
+  );
+  const hasFilters =
+    Boolean(debouncedQuery.trim()) ||
+    statusFilter !== "all" ||
+    hasDateFilters;
 
   useEffect(() => {
-    fetchAdmissionStatusCounts().then(({ counts, error: err }) => {
+    fetchAdmissionStatusCounts(dates).then(({ counts, error: err }) => {
       if (!err && counts) setStatusCounts(counts);
     });
-  }, []);
+  }, [dates]);
 
   useEffect(() => {
     setLoading(true);
@@ -75,13 +100,14 @@ export default function Admissions() {
       pageSize,
       query: debouncedQuery,
       status: statusFilter,
+      ...dates,
     }).then(({ admissions: rows, total: t, error: err }) => {
       setAdmissions(rows);
       setTotal(t);
       setError(err ?? "");
       setLoading(false);
     });
-  }, [page, pageSize, debouncedQuery, statusFilter]);
+  }, [page, pageSize, debouncedQuery, statusFilter, dates]);
 
   const statusFilters = useMemo(
     () => [
@@ -95,7 +121,7 @@ export default function Admissions() {
   );
 
   const description =
-    statusCounts.all === 0
+    statusCounts.all === 0 && !hasFilters
       ? "Create a new admission when a student enrolls in class."
       : `${total} admission${total === 1 ? "" : "s"} shown${hasFilters ? " (filtered)" : ""}.`;
 
@@ -104,10 +130,20 @@ export default function Admissions() {
     setPage(1);
   };
 
+  const patchDates = (patch) => {
+    setDates((prev) => ({ ...prev, ...patch }));
+    setPage(1);
+  };
+
+  const clearDateFilters = () => {
+    setDates(emptyDates);
+    setPage(1);
+  };
+
   const clearFilters = () => {
     setQuery("");
     setStatusFilter("all");
-    setPage(1);
+    clearDateFilters();
   };
 
   return (
@@ -134,17 +170,35 @@ export default function Admissions() {
           setQuery(value);
           setPage(1);
         }}
-        placeholder="Search by form #, name, mobile, or address…"
+        placeholder="Search form #, name, mobile…"
         filters={statusFilters}
         activeFilter={statusFilter}
         onFilter={(value) => {
           setStatusFilter(value);
           setPage(1);
         }}
+        actions={
+          <DateRangeFilterPopover
+            createdFrom={dates.createdFrom}
+            createdTo={dates.createdTo}
+            joinFrom={dates.joinFrom}
+            joinTo={dates.joinTo}
+            onChange={patchDates}
+            onClear={clearDateFilters}
+          />
+        }
+      />
+
+      <DateRangeFilterChips
+        createdFrom={dates.createdFrom}
+        createdTo={dates.createdTo}
+        joinFrom={dates.joinFrom}
+        joinTo={dates.joinTo}
+        onChange={patchDates}
       />
 
       {loading ? (
-        <TableSkeleton rows={6} cols={6} />
+        <TableSkeleton rows={6} cols={7} />
       ) : total === 0 && !hasFilters ? (
         <div className="admin-card">
           <EmptyState
@@ -166,7 +220,7 @@ export default function Admissions() {
           <EmptyState
             icon={<IconFile className="w-7 h-7" />}
             title="No matching applications"
-            description="Try a different search term or clear the status filter."
+            description="Try a different search, status, or date range."
             action={
               <button
                 type="button"
@@ -206,14 +260,17 @@ export default function Admissions() {
                   {row.student_mobile}
                 </td>
                 <td className="px-4 py-3.5 text-sm text-ink-soft">
-                  {formatSubmitted(row.submitted_at)}
+                  {formatDay(row.created_at || row.submitted_at)}
+                </td>
+                <td className="px-4 py-3.5 text-sm text-ink-soft">
+                  {formatDay(row.join_date)}
                 </td>
                 <td className="px-4 py-3.5">
                   <Badge variant={statusVariant(row.status)}>
                     {row.status}
                   </Badge>
                 </td>
-                    <td className="px-4 py-3.5 text-right">
+                <td className="px-4 py-3.5 text-right">
                   <div className="inline-flex items-center gap-3 justify-end">
                     <Link
                       to={`/admin/admissions/${row.id}`}
