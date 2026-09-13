@@ -6,8 +6,8 @@ import PageHeader from '../../components/admin/PageHeader.jsx'
 import { IconArrowLeft } from '../../components/admin/icons.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { fetchAdmissionById, updateAdmission } from '../../lib/admin.js'
+import { BATCH_TYPES } from '../../lib/admissionConstants.js'
 
-const BATCH_TYPES = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 const STATUS_OPTIONS = ['pending', 'reviewed', 'enrolled', 'rejected']
 const MOBILE_RE = /^[6-9]\d{9}$/
 
@@ -73,8 +73,8 @@ export default function AdmissionEdit() {
       showToast('Enter a valid 10-digit student mobile.', { type: 'error' })
       return
     }
-    if (form.father_mobile && !MOBILE_RE.test(form.father_mobile)) {
-      showToast('Enter a valid 10-digit father mobile, or leave blank.', { type: 'error' })
+    if (!form.father_mobile || !MOBILE_RE.test(form.father_mobile)) {
+      showToast('Enter a valid 10-digit father mobile.', { type: 'error' })
       return
     }
 
@@ -82,7 +82,7 @@ export default function AdmissionEdit() {
     const { admission, error: err } = await updateAdmission(id, {
       student_name: form.student_name.trim(),
       student_mobile: form.student_mobile.trim(),
-      father_mobile: form.father_mobile.trim() || null,
+      father_mobile: form.father_mobile.trim(),
       current_address: form.current_address.trim(),
       permanent_address: form.permanent_address.trim(),
       reference_details: form.reference_details.trim() || null,
@@ -170,6 +170,7 @@ export default function AdmissionEdit() {
                 className={inputClass}
                 value={form.father_mobile}
                 onChange={(e) => setField('father_mobile', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                required
               />
             </div>
           </div>

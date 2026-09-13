@@ -239,6 +239,7 @@
   position: relative;
   z-index: 1;
   flex: 1;
+  font-weight: 600;
 }
 
 .admission-print-root .photo-box {
@@ -290,8 +291,8 @@
   flex: 1;
   border-bottom: 1px dotted var(--form-line);
   min-height: 6mm;
-  padding: 0 1.5mm 1mm;
-  font-size: 14px;
+  padding: 0 1.5mm 0mm;
+  font-size: 15px;
   line-height: 1.25;
 }
 
@@ -339,8 +340,8 @@
 .admission-print-root .reference-line {
   border-bottom: 1px dotted var(--form-line);
   min-height: 7mm;
-  font-size: 14px;
-  padding: 0 1.5mm 1mm;
+  font-size: 15px;
+  padding: 0 1.5mm 0mm;
   margin-bottom: 1mm;
 }
 
@@ -359,7 +360,7 @@
   border-bottom: 1px dotted var(--form-line);
   min-height: 6.5mm;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .admission-print-root .time-colon {
@@ -380,12 +381,16 @@
 }
 
 .admission-print-root .batch-type-input {
-  width: 12mm;
+  width: auto;
+  min-width: 12mm;
+  max-width: 28mm;
+  padding: 0 1.5mm;
   border-bottom: 1px dotted var(--form-line);
   min-height: 6.5mm;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 /*
@@ -632,6 +637,7 @@
   gap: 3.5mm;
   position: relative;
   border-top: 1px solid var(--form-border);
+  font-weight: 600;
 }
 
 .admission-print-root .student-copy-field {
@@ -657,7 +663,7 @@
   border-bottom: 1px dotted var(--form-line);
   min-height: 5.5mm;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .admission-print-root .student-copy-time-slots .batch-type-label {
@@ -668,12 +674,16 @@
 
 .admission-print-root .student-copy-time-slots .batch-type-input {
   display: inline-block;
-  width: 10mm;
+  width: auto;
+  min-width: 10mm;
+  max-width: 26mm;
+  padding: 0 1mm;
   border-bottom: 1px dotted var(--form-line);
   min-height: 5.5mm;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 .admission-print-root .student-copy-package .student-copy-label {
@@ -697,8 +707,8 @@
   flex: 1;
   border-bottom: 1px dotted var(--form-line);
   min-height: 5.5mm;
-  font-size: 14px;
-  padding-bottom: 0.5mm;
+  font-size: 15px;
+  /* padding-bottom: 0.5mm; */
 }
 
 /* ---------- Page 2 rules ---------- */

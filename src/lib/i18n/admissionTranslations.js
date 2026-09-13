@@ -109,7 +109,7 @@ export const formCopy = {
     errors: {
       name: "Student name is required",
       mobile: "Enter a valid 10-digit mobile number",
-      fatherMobile: "Enter a valid 10-digit father mobile number",
+      fatherMobile: "Father mobile is required (10 digits)",
       photo: "Photo is required (JPG/PNG, max 5 MB)",
       photoType: "Photo must be JPG or PNG",
       photoSize: "Photo must be under 5 MB",
@@ -214,7 +214,7 @@ export const formCopy = {
     errors: {
       name: "વિદ્યાર્થીનું નામ જરૂરી છે",
       mobile: "માન્ય 10 અંકનો મોબાઇલ નંબર દાખલ કરો",
-      fatherMobile: "માન્ય 10 અંકનો પિતાનો મોબાઇલ નંબર દાખલ કરો",
+      fatherMobile: "પિતાનો મોબાઇલ નંબર જરૂરી છે (10 અંક)",
       photo: "ફોટો જરૂરી છે (JPG/PNG, મેક્સ 5 MB)",
       photoType: "ફોટો JPG અથવા PNG હોવો જોઈએ",
       photoSize: "ફોટો 5 MB થી નાનો હોવો જોઈએ",

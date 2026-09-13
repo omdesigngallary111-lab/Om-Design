@@ -5,12 +5,12 @@ import PageHeader from "../../components/admin/PageHeader.jsx";
 import SignaturePad from "../../components/SignaturePad.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { createAdmission } from "../../lib/admin.js";
+import { BATCH_TYPES } from "../../lib/admissionConstants.js";
 import { formCopy, rules } from "../../lib/i18n/admissionTranslations.js";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_AADHAAR_UPLOADS = 2;
 const MOBILE_RE = /^[6-9]\d{9}$/;
-const BATCH_TYPES = ["A", "B", "C", "D", "E", "F", "G"];
 
 const emptyForm = {
   student_name: "",
@@ -182,7 +182,8 @@ export default function AdmissionNew() {
     if (!mobile) errors.student_mobile = t.errors.mobile;
     else if (!MOBILE_RE.test(mobile)) errors.student_mobile = t.errors.mobile;
     const fatherMobile = form.father_mobile.replace(/\D/g, "");
-    if (fatherMobile && !MOBILE_RE.test(fatherMobile)) {
+    if (!fatherMobile) errors.father_mobile = t.errors.fatherMobile;
+    else if (!MOBILE_RE.test(fatherMobile)) {
       errors.father_mobile = t.errors.fatherMobile;
     }
     if (!photoDataUrl) errors.photo = t.errors.photo;
@@ -286,7 +287,7 @@ export default function AdmissionNew() {
     const { admission, error } = await createAdmission({
       student_name: form.student_name.trim(),
       student_mobile: mobile,
-      father_mobile: fatherMobile || null,
+      father_mobile: fatherMobile,
       student_photo: photoDataUrl,
       aadhaar_cards: aadhaarPreviews.map((row) => row.dataUrl),
       student_signature: signatureDataUrl,
@@ -379,7 +380,7 @@ export default function AdmissionNew() {
                   <FormField
                     label={t.fatherMobile}
                     htmlFor="father_mobile"
-                    optionalLabel={t.optionalLabel}
+                    required
                     error={fieldErrors.father_mobile}
                   >
                     <input
@@ -393,6 +394,7 @@ export default function AdmissionNew() {
                       onChange={handleFatherMobileChange}
                       className={inputClass}
                       placeholder={t.mobilePlaceholder}
+                      aria-required="true"
                     />
                   </FormField>
 
