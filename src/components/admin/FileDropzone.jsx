@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { IconImage, IconUpload, IconFile } from './icons.jsx'
+import { isNativePlatform, pickNativeImage } from '../../lib/native.js'
 
 export default function FileDropzone({
   accept,
@@ -14,6 +15,7 @@ export default function FileDropzone({
 }) {
   const inputRef = useRef(null)
   const [dragOver, setDragOver] = useState(false)
+  const [picking, setPicking] = useState(false)
 
   const handleFiles = (files) => {
     const file = files?.[0]
@@ -21,13 +23,38 @@ export default function FileDropzone({
     onFile(file)
   }
 
+  const openPicker = async () => {
+    if (disabled || picking) return
+
+    // Image picks use the native camera/gallery sheet inside the app.
+    if (kind === 'image' && isNativePlatform()) {
+      setPicking(true)
+      try {
+        const file = await pickNativeImage({ fileName: 'upload.jpg' })
+        if (file) onFile(file)
+      } catch (err) {
+        // User cancel is normal; ignore. Real errors bubble via toast upstream if needed.
+        if (err?.message && !/cancel/i.test(String(err.message))) {
+          console.warn('[FileDropzone] native image pick failed', err)
+        }
+      } finally {
+        setPicking(false)
+      }
+      return
+    }
+
+    inputRef.current?.click()
+  }
+
   const onDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
+    if (isNativePlatform() && kind === 'image') return
     handleFiles(e.dataTransfer.files)
   }
 
   const hasPreview = Boolean(previewUrl || fileLabel)
+  const nativeImage = kind === 'image' && isNativePlatform()
 
   return (
     <div>
@@ -35,11 +62,11 @@ export default function FileDropzone({
       <div
         onDragOver={(e) => {
           e.preventDefault()
-          if (!disabled) setDragOver(true)
+          if (!disabled && !nativeImage) setDragOver(true)
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        onClick={() => !disabled && inputRef.current?.click()}
+        onClick={openPicker}
         className={`relative rounded-xl border-2 border-dashed cursor-pointer transition-all duration-150
                     ${disabled ? 'opacity-60 cursor-not-allowed' : ''}
                     ${
@@ -62,12 +89,14 @@ export default function FileDropzone({
           }}
         />
 
-        {uploading ? (
+        {uploading || picking ? (
           <div className="px-5 py-8 flex flex-col items-center gap-3">
             <div className="w-full max-w-[220px] h-1.5 rounded-full bg-ink/10 overflow-hidden">
               <div className="h-full w-1/2 rounded-full bg-maroon animate-upload-indeterminate" />
             </div>
-            <p className="text-xs font-medium text-ink-soft">Uploading…</p>
+            <p className="text-xs font-medium text-ink-soft">
+              {picking ? 'Opening camera…' : 'Uploading…'}
+            </p>
           </div>
         ) : hasPreview ? (
           <div className="flex items-center gap-4 px-4 py-3.5">
@@ -86,7 +115,9 @@ export default function FileDropzone({
               <p className="text-sm font-semibold text-ink truncate">
                 {fileLabel || 'File attached'}
               </p>
-              <p className="text-xs text-ink-soft mt-0.5">Click or drop to replace</p>
+              <p className="text-xs text-ink-soft mt-0.5">
+                {nativeImage ? 'Tap to take or choose a photo' : 'Click or drop to replace'}
+              </p>
             </div>
             <span className="text-ink-soft/50 shrink-0">
               <IconUpload className="w-4 h-4" />
@@ -98,9 +129,13 @@ export default function FileDropzone({
               {kind === 'image' ? <IconImage className="w-5 h-5" /> : <IconUpload className="w-5 h-5" />}
             </div>
             <p className="text-sm font-semibold text-ink">
-              Drop {kind === 'image' ? 'an image' : 'a file'} here
+              {nativeImage
+                ? 'Take a photo or choose from gallery'
+                : `Drop ${kind === 'image' ? 'an image' : 'a file'} here`}
             </p>
-            <p className="text-xs text-ink-soft mt-1">or click to browse</p>
+            <p className="text-xs text-ink-soft mt-1">
+              {nativeImage ? 'Uses the device camera' : 'or click to browse'}
+            </p>
             {hint && <p className="text-[11px] text-ink-soft/80 mt-2">{hint}</p>}
           </div>
         )}

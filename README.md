@@ -255,10 +255,97 @@ fetch before clearing `loading`, and adding a second `profileLoading`
 flag (combined into the same `loading` value exposed to consumers) so
 the same gap can't reopen on a post-login profile refetch either.
 
-## What's left
+## Native apps (Capacitor)
 
-All six phases are built. Real remaining work is connecting it to a
-live backend:
+The Android (and later iOS) apps ship as a **bundled** Capacitor shell around
+the Vite `dist/` build — not a remote WebView of the live site.
+
+| | |
+|---|---|
+| **App name** | Om Design & Classes |
+| **Package / bundle ID** | `com.omdesignandclasses.app` |
+| **webDir** | `dist` |
+
+### Build & sync (required before every native build)
+
+Env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_RAZORPAY_KEY_ID`)
+are baked in at **Vite build time**. They must be present in `.env` (or the
+CI environment) when you run:
+
+```bash
+npm run cap:build   # = npm run build && npx cap sync
+```
+
+### Android (this machine)
+
+1. Install [Android Studio](https://developer.android.com/studio) (JDK + SDK + an emulator or a USB device with debugging on).
+2. `npm run cap:android` — builds, syncs, opens the project in Android Studio.
+3. Or `npm run cap:run:android` for a connected device/emulator.
+
+Confirm on a real device: admission/product image pick opens the **native**
+camera/gallery sheet; design detail **Share** opens the OS share sheet;
+hardware back walks in-app history.
+
+### iOS (Codemagic)
+
+Deferred until an Apple Developer Team ID is available. Do not configure
+Universal Links / Associated Domains until then.
+
+### Icons
+
+Source assets live in `resources/icon.png` and `resources/splash.png`
+(cleaned circular monogram on ivory). Regenerate platform mipmaps/splash:
+
+```bash
+npm run generate:assets
+```
+
+### Deep links (App Links)
+
+Shared design URLs (`https://www.omdesignandclasses.com/designs/...`) open in
+the app when installed. Verification files ship from `public/.well-known/` —
+**deploy the web build** so they are live on the production domain.
+
+- Android: `assetlinks.json` (debug SHA included; add release SHA after you
+  create the upload keystore)
+- iOS Universal Links: deferred until Apple Team ID is available
+
+After deploy, rebuild the Android app (`npm run cap:build`) so the intent
+filter + bundled JS deep-link handler stay in sync.
+
+### Play Store — signed AAB (Android)
+
+iOS / Codemagic is on hold until you have an Apple Team ID.
+
+1. **Create the upload keystore once** (gitignored — back it up offline):
+
+   ```powershell
+   .\scripts\create-android-keystore.ps1
+   ```
+
+   That writes `android/release.keystore` + `android/key.properties` and prints
+   the release SHA-256. Add that SHA to `public/.well-known/assetlinks.json`,
+   then redeploy the website.
+
+2. **Build the release bundle** (needs `.env` Vite vars present):
+
+   ```bash
+   npm run cap:aab
+   ```
+
+   Output: `android/app/build/outputs/bundle/release/app-release.aab`
+
+3. **Play Console**
+   - Create the app with package `com.omdesignandclasses.app`
+   - Upload the AAB to **Closed testing** first
+   - New personal Play Console accounts typically need **12 testers for 14 days**
+     in closed testing before production access is granted — budget that into
+     the launch timeline
+   - Do **not** lose `release.keystore` / `key.properties`; without them you
+     cannot ship updates as the same app
+
+Review the AAB with me before submitting to production.
+
 
 1. Run all five files in `supabase/migrations/` in order (001 is your
    original schema, saved here in case it wasn't already applied).

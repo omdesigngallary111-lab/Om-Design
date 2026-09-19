@@ -9,6 +9,7 @@ import WishlistButton from '../components/WishlistButton.jsx'
 import AddToCartButton from '../components/AddToCartButton.jsx'
 import Seo from '../components/Seo.jsx'
 import { callEdgeFunction, loadRazorpayCheckoutScript } from '../lib/razorpay.js'
+import { isNativePlatform, shareContent, SITE_ORIGIN } from '../lib/native.js'
 
 const specRows = (design) => [
   ['Design ID', design.design_id],
@@ -49,6 +50,7 @@ export default function DesignDetail() {
   const [offerPreview, setOfferPreview] = useState(null)
   const [offerLoading, setOfferLoading] = useState(false)
   const [offerMessage, setOfferMessage] = useState('')
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -309,6 +311,33 @@ export default function DesignDetail() {
     }
   }
 
+  const handleShare = async () => {
+    if (!design || sharing) return
+    const url = `${SITE_ORIGIN}/designs/${slug}`
+    setSharing(true)
+    try {
+      await shareContent({
+        title: design.name,
+        text: `${design.name} — Om Design & Classes`,
+        url,
+        dialogTitle: 'Share design',
+      })
+    } catch (err) {
+      if (err?.message === 'SHARE_UNAVAILABLE' || err?.name === 'NotAllowedError') {
+        try {
+          await navigator.clipboard.writeText(url)
+          showToast('Link copied to clipboard', { type: 'success' })
+        } catch {
+          showToast('Could not share this design', { type: 'error' })
+        }
+      } else if (!/cancel|abort/i.test(String(err?.message || err))) {
+        showToast('Could not share this design', { type: 'error' })
+      }
+    } finally {
+      setSharing(false)
+    }
+  }
+
   if (loading) {
     return <div className="max-w-6xl mx-auto px-6 py-24 text-center text-ink-soft">Loading…</div>
   }
@@ -561,6 +590,15 @@ export default function DesignDetail() {
               </>
             )}
             <WishlistButton designId={design.id} redirectPath={`/designs/${slug}`} />
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={sharing}
+              className="btn-outline !rounded-sm disabled:opacity-60"
+              aria-label="Share this design"
+            >
+              {sharing ? 'Sharing…' : isNativePlatform() ? 'Share' : 'Share link'}
+            </button>
           </div>
 
           {session && !isFree && !canPayWithWallet && payable.final > 0 && (

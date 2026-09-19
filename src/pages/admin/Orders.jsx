@@ -6,6 +6,7 @@ import SearchBar from "../../components/admin/SearchBar.jsx";
 import Badge from "../../components/admin/Badge.jsx";
 import EmptyState from "../../components/admin/EmptyState.jsx";
 import Alert from "../../components/admin/Alert.jsx";
+import OrderDetailModal from "../../components/admin/OrderDetailModal.jsx";
 import { AdminTable } from "../../components/admin/AdminTable.jsx";
 import { TableSkeleton } from "../../components/admin/Skeleton.jsx";
 import { IconOrders } from "../../components/admin/icons.jsx";
@@ -78,6 +79,7 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const debouncedQuery = useDebouncedValue(query);
   const hasFilters = Boolean(debouncedQuery.trim()) || statusFilter !== "all";
 
@@ -100,6 +102,9 @@ export default function Orders() {
     setPageSize(size);
     setPage(1);
   };
+
+  const openOrder = (order) => setSelectedOrder(order);
+  const closeOrder = () => setSelectedOrder(null);
 
   return (
     <div>
@@ -156,10 +161,18 @@ export default function Orders() {
                     className="hover:bg-sand/40 transition-colors duration-150"
                   >
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <p className="font-semibold text-ink">
-                        #{order.id.slice(0, 8)}
-                      </p>
-                      <p className="text-xs text-ink-soft mt-0.5">Order ID</p>
+                      <button
+                        type="button"
+                        onClick={() => openOrder(order)}
+                        className="text-left group"
+                      >
+                        <p className="font-semibold text-maroon group-hover:underline">
+                          #{order.id.slice(0, 8)}
+                        </p>
+                        <p className="text-xs text-ink-soft mt-0.5">
+                          View details
+                        </p>
+                      </button>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="max-w-[12rem]" title={customer.full_name || undefined}>
@@ -214,14 +227,18 @@ export default function Orders() {
               return (
                 <article key={order.id} className="admin-card p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-ink">
+                    <button
+                      type="button"
+                      onClick={() => openOrder(order)}
+                      className="min-w-0 text-left"
+                    >
+                      <p className="font-semibold text-maroon">
                         #{order.id.slice(0, 8)}
                       </p>
                       <p className="text-xs text-ink-soft mt-0.5">
-                        {formatDate(order.created_at)}
+                        {formatDate(order.created_at)} · Tap for details
                       </p>
-                    </div>
+                    </button>
                     <Badge variant={statusVariant(order.status)}>
                       {order.status}
                     </Badge>
@@ -268,6 +285,13 @@ export default function Orders() {
                         {order.razorpay_order_id || "—"}
                       </code>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => openOrder(order)}
+                      className="mt-1 w-full rounded-lg border border-maroon/20 bg-maroon/5 py-2 text-xs font-semibold text-maroon"
+                    >
+                      View order details
+                    </button>
                   </div>
                 </article>
               );
@@ -283,6 +307,12 @@ export default function Orders() {
           />
         </>
       )}
+
+      <OrderDetailModal
+        order={selectedOrder}
+        open={Boolean(selectedOrder)}
+        onClose={closeOrder}
+      />
     </div>
   );
 }

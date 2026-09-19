@@ -159,6 +159,8 @@ export async function fetchOrdersAdmin({
       status,
       created_at,
       razorpay_order_id,
+      payment_method,
+      offer_id,
       profiles:user_id (
         full_name,
         phone,
@@ -167,13 +169,23 @@ export async function fetchOrdersAdmin({
       designs:design_id (
         id,
         name,
-        slug
+        slug,
+        thumbnail_url
+      ),
+      offers:offer_id (
+        code,
+        discount_percentage
       ),
       order_items (
         id,
         design_id,
         design_name,
-        unit_price
+        unit_price,
+        designs:design_id (
+          thumbnail_url,
+          name,
+          slug
+        )
       )
     `
 
@@ -183,6 +195,8 @@ export async function fetchOrdersAdmin({
       status,
       created_at,
       razorpay_order_id,
+      payment_method,
+      offer_id,
       profiles:user_id (
         full_name,
         phone,
@@ -191,7 +205,12 @@ export async function fetchOrdersAdmin({
       designs:design_id (
         id,
         name,
-        slug
+        slug,
+        thumbnail_url
+      ),
+      offers:offer_id (
+        code,
+        discount_percentage
       )
     `
 
@@ -232,6 +251,27 @@ export async function fetchOrdersAdmin({
   let { data, error, count } = await runQuery(selectWithItems)
   if (error && /order_items/i.test(error.message)) {
     ;({ data, error, count } = await runQuery(selectLegacy))
+  }
+  // Older DBs may lack payment_method / offers join — keep Orders page working.
+  if (error && /(payment_method|offers)/i.test(error.message)) {
+    const selectSafeItems = `
+      id, amount, status, created_at, razorpay_order_id,
+      profiles:user_id ( full_name, phone, email ),
+      designs:design_id ( id, name, slug, thumbnail_url ),
+      order_items (
+        id, design_id, design_name, unit_price,
+        designs:design_id ( thumbnail_url, name, slug )
+      )
+    `
+    const selectSafeLegacy = `
+      id, amount, status, created_at, razorpay_order_id,
+      profiles:user_id ( full_name, phone, email ),
+      designs:design_id ( id, name, slug, thumbnail_url )
+    `
+    ;({ data, error, count } = await runQuery(selectSafeItems))
+    if (error && /order_items/i.test(error.message)) {
+      ;({ data, error, count } = await runQuery(selectSafeLegacy))
+    }
   }
 
   if (error) return { orders: [], total: 0, error: error.message }

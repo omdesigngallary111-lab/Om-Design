@@ -3,3 +3,15 @@ dist
 .env
 .env.local
 supabase/.temp
+
+# Android / Capacitor local build outputs (keep android/ project sources)
+android/.gradle
+android/app/build
+android/build
+android/captures
+android/local.properties
+android/key.properties
+android/*.keystore
+android/*.jks
+*.keystore
+*.jks

@@ -7,8 +7,10 @@ import { useToast } from "../../context/ToastContext.jsx";
 import { createAdmission } from "../../lib/admin.js";
 import { BATCH_TYPES } from "../../lib/admissionConstants.js";
 import { formCopy, rules } from "../../lib/i18n/admissionTranslations.js";
+import { isNativePlatform, pickNativeImage } from "../../lib/native.js";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_AADHAAR_BYTES = 2 * 1024 * 1024;
 const MAX_AADHAAR_UPLOADS = 2;
 const MOBILE_RE = /^[6-9]\d{9}$/;
 
@@ -100,6 +102,46 @@ function FormSection({ number, title, children }) {
   );
 }
 
+function UploadGlyph({ className = "h-7 w-7" }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+      />
+    </svg>
+  );
+}
+
+function UploadActionButton({ onClick, children, variant = "primary", disabled = false }) {
+  const base =
+    "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-45";
+  const styles =
+    variant === "primary"
+      ? "bg-maroon text-ivory hover:bg-maroon-light shadow-sm"
+      : variant === "danger"
+        ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+        : "border border-ink/12 bg-white text-ink hover:border-ink/25 hover:bg-sand/50";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`${base} ${styles}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function FieldError({ message }) {
   if (!message) return null;
   return <p className="text-xs text-red-600 mt-1.5 font-medium">{message}</p>;
@@ -152,6 +194,7 @@ export default function AdmissionNew() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [photoDrag, setPhotoDrag] = useState(false);
+  const [aadhaarDrag, setAadhaarDrag] = useState(false);
   const fileInputRef = useRef(null);
   const aadhaarInputRef = useRef(null);
 
@@ -187,6 +230,7 @@ export default function AdmissionNew() {
       errors.father_mobile = t.errors.fatherMobile;
     }
     if (!photoDataUrl) errors.photo = t.errors.photo;
+    if (aadhaarPreviews.length < 1) errors.aadhaar_cards = t.errors.aadhaarRequired;
     if (!form.current_address.trim()) errors.current_address = t.errors.currentAddress;
     if (!form.permanent_address.trim()) errors.permanent_address = t.errors.permanentAddress;
     if (!form.class_start_time.trim()) errors.class_start_time = t.errors.classStart;
@@ -226,7 +270,23 @@ export default function AdmissionNew() {
   const handlePhotoDrop = (e) => {
     e.preventDefault();
     setPhotoDrag(false);
+    if (isNativePlatform()) return;
     processPhotoFile(e.dataTransfer.files?.[0]);
+  };
+
+  const openPhotoPicker = async () => {
+    if (isNativePlatform()) {
+      try {
+        const file = await pickNativeImage({ fileName: "student-photo.jpg" });
+        if (file) await processPhotoFile(file);
+      } catch (err) {
+        if (err?.message && !/cancel/i.test(String(err.message))) {
+          showToast("Could not open camera", { type: "error" });
+        }
+      }
+      return;
+    }
+    fileInputRef.current?.click();
   };
 
   const processAadhaarFiles = async (fileList) => {
@@ -247,7 +307,7 @@ export default function AdmissionNew() {
           setFieldErrors((err) => ({ ...err, aadhaar_cards: t.errors.aadhaarType }));
           return;
         }
-        if (file.size > MAX_PHOTO_BYTES) {
+        if (file.size > MAX_AADHAAR_BYTES) {
           setFieldErrors((err) => ({ ...err, aadhaar_cards: t.errors.aadhaarSize }));
           return;
         }
@@ -270,6 +330,29 @@ export default function AdmissionNew() {
   };
 
   const handleAadhaarChange = (e) => processAadhaarFiles(e.target.files);
+
+  const handleAadhaarDrop = (e) => {
+    e.preventDefault();
+    setAadhaarDrag(false);
+    if (isNativePlatform()) return;
+    processAadhaarFiles(e.dataTransfer.files);
+  };
+
+  const openAadhaarPicker = async () => {
+    if (aadhaarPreviews.length >= MAX_AADHAAR_UPLOADS) return;
+    if (isNativePlatform()) {
+      try {
+        const file = await pickNativeImage({ fileName: "aadhaar.jpg" });
+        if (file) await processAadhaarFiles([file]);
+      } catch (err) {
+        if (err?.message && !/cancel/i.test(String(err.message))) {
+          showToast("Could not open camera", { type: "error" });
+        }
+      }
+      return;
+    }
+    aadhaarInputRef.current?.click();
+  };
 
   const removeAadhaar = (id) => {
     setAadhaarPreviews((rows) => rows.filter((row) => row.id !== id));
@@ -398,66 +481,83 @@ export default function AdmissionNew() {
                     />
                   </FormField>
 
-                  <FormField
-                    label={t.photoLabel}
-                    hint={t.photoHint}
-                    required
-                    error={fieldErrors.photo}
-                  >
-                    <div className="grid sm:grid-cols-[9rem_minmax(0,1fr)] gap-4 items-start">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setPhotoDrag(true);
-                        }}
-                        onDragLeave={() => setPhotoDrag(false)}
-                        onDrop={handlePhotoDrop}
-                        className={`relative flex flex-col items-center justify-center w-full sm:w-36 h-48 rounded-2xl border-2 border-dashed transition-all duration-150 overflow-hidden shrink-0 ${
-                          photoDrag
-                            ? "border-maroon bg-maroon/5"
-                            : photoPreview
-                              ? "border-ink/15 bg-sand/30"
-                              : "border-ink/20 bg-sand/40 hover:border-maroon/40 hover:bg-sand/60"
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-ink">
+                        {t.documentsLabel}
+                        <RequiredMark />
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                        {t.documentsHint}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      {/* Student photo */}
+                      <div
+                        className={`rounded-2xl border p-4 transition-colors ${
+                          fieldErrors.photo
+                            ? "border-red-300 bg-red-50/40"
+                            : "border-ink/10 bg-sand/20"
                         }`}
                       >
-                        {photoPreview ? (
-                          <img
-                            src={photoPreview}
-                            alt=""
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                        ) : (
-                          <>
-                            <svg
-                              className="w-7 h-7 text-ink-soft mb-2"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              aria-hidden="true"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1.5"
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                              />
-                            </svg>
-                            <span className="text-xs font-semibold text-ink-soft px-2 text-center">
-                              {t.uploadPhoto}
-                            </span>
-                          </>
-                        )}
-                      </button>
-                      <div className="flex flex-col gap-3 sm:pt-1">
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-ink">
+                              {t.photoLabel}
+                              <RequiredMark />
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-ink-soft">
+                              {t.photoHint}
+                            </p>
+                          </div>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="btn-secondary !text-xs !py-2.5 self-start"
+                          onClick={openPhotoPicker}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            if (!isNativePlatform()) setPhotoDrag(true);
+                          }}
+                          onDragLeave={() => setPhotoDrag(false)}
+                          onDrop={handlePhotoDrop}
+                          className={`relative mx-auto flex h-52 w-full max-w-[11.5rem] flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-150 ${
+                            photoDrag
+                              ? "border-maroon bg-maroon/5"
+                              : photoPreview
+                                ? "border-ink/12 bg-white"
+                                : "border-ink/20 bg-white/80 hover:border-maroon/45 hover:bg-maroon/[0.03]"
+                          }`}
                         >
-                          {photoPreview ? t.changePhoto : t.uploadPhoto}
+                          {photoPreview ? (
+                            <img
+                              src={photoPreview}
+                              alt=""
+                              className="absolute inset-0 h-full w-full object-cover"
+                            />
+                          ) : (
+                            <>
+                              <span className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-sand text-maroon">
+                                <UploadGlyph className="h-5 w-5" />
+                              </span>
+                              <span className="px-3 text-center text-xs font-semibold text-ink">
+                                {t.dropPhoto}
+                              </span>
+                              <span className="mt-1 px-3 text-center text-[11px] text-ink-soft">
+                                JPG / PNG · max 5 MB
+                              </span>
+                            </>
+                          )}
                         </button>
+
+                        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                          <UploadActionButton onClick={openPhotoPicker}>
+                            <UploadGlyph className="h-3.5 w-3.5" />
+                            {photoPreview ? t.changePhoto : t.uploadPhoto}
+                          </UploadActionButton>
+                        </div>
+                        <FieldError message={fieldErrors.photo} />
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -466,60 +566,125 @@ export default function AdmissionNew() {
                           onChange={handlePhotoChange}
                         />
                       </div>
-                    </div>
-                  </FormField>
 
-                  <FormField
-                    label={t.aadhaarLabel}
-                    hint={t.aadhaarHint}
-                    htmlFor="aadhaar_cards"
-                    optionalLabel={t.optionalLabel}
-                    error={fieldErrors.aadhaar_cards}
-                  >
-                    <div className="space-y-3">
-                      {aadhaarPreviews.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {aadhaarPreviews.map((row, index) => (
-                            <div
-                              key={row.id}
-                              className="rounded-2xl border border-ink/12 bg-white overflow-hidden"
-                            >
-                              <div className="aspect-[4/3] bg-sand/40">
-                                <img
-                                  src={row.dataUrl}
-                                  alt={`Aadhaar ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-                                <p className="text-xs text-ink-soft truncate">
-                                  {row.name || `Aadhaar ${index + 1}`}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => removeAadhaar(row.id)}
-                                  className="text-xs font-semibold text-red-600 hover:underline"
-                                >
-                                  {t.removeAadhaar}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                      {/* Aadhaar */}
+                      <div
+                        className={`rounded-2xl border p-4 transition-colors ${
+                          fieldErrors.aadhaar_cards
+                            ? "border-red-300 bg-red-50/40"
+                            : "border-ink/10 bg-sand/20"
+                        }`}
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-ink">
+                              {t.aadhaarLabel}
+                              <RequiredMark />
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-ink-soft">
+                              {t.aadhaarHint}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-ink-soft ring-1 ring-ink/8">
+                            {aadhaarPreviews.length}/{MAX_AADHAAR_UPLOADS}
+                          </span>
                         </div>
-                      ) : null}
 
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => aadhaarInputRef.current?.click()}
-                          className="btn-secondary !text-xs !py-2.5"
-                          disabled={aadhaarPreviews.length >= MAX_AADHAAR_UPLOADS}
-                        >
-                          {aadhaarPreviews.length > 0 ? t.addAadhaar : t.uploadAadhaar}
-                        </button>
-                        <span className="text-xs text-ink-soft">
-                          {aadhaarPreviews.length}/{MAX_AADHAAR_UPLOADS} {t.aadhaarUploadedSuffix}
-                        </span>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {Array.from({ length: MAX_AADHAAR_UPLOADS }).map(
+                            (_, index) => {
+                              const row = aadhaarPreviews[index];
+                              const canUploadHere =
+                                !row && index === aadhaarPreviews.length;
+                              if (!row && index > aadhaarPreviews.length) {
+                                return (
+                                  <div
+                                    key={`aadhaar-placeholder-${index}`}
+                                    className="flex aspect-[4/3] items-center justify-center rounded-xl border border-dashed border-ink/10 bg-white/50 text-[11px] text-ink-soft"
+                                  >
+                                    {t.aadhaarSlotWaiting}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div
+                                  key={row?.id || `aadhaar-slot-${index}`}
+                                  className="space-y-2"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={
+                                      row ? undefined : openAadhaarPicker
+                                    }
+                                    disabled={Boolean(row)}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      if (!isNativePlatform() && canUploadHere) {
+                                        setAadhaarDrag(true);
+                                      }
+                                    }}
+                                    onDragLeave={() => setAadhaarDrag(false)}
+                                    onDrop={row ? undefined : handleAadhaarDrop}
+                                    className={`relative flex aspect-[4/3] w-full flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-all duration-150 ${
+                                      row
+                                        ? "cursor-default border-ink/12 bg-white"
+                                        : aadhaarDrag && canUploadHere
+                                          ? "border-maroon bg-maroon/5"
+                                          : "border-ink/20 bg-white/80 hover:border-maroon/45 hover:bg-maroon/[0.03]"
+                                    }`}
+                                  >
+                                    {row ? (
+                                      <img
+                                        src={row.dataUrl}
+                                        alt={`Aadhaar ${index + 1}`}
+                                        className="absolute inset-0 h-full w-full object-contain p-1.5"
+                                      />
+                                    ) : (
+                                      <>
+                                        <span className="mb-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-sand text-maroon">
+                                          <UploadGlyph className="h-4 w-4" />
+                                        </span>
+                                        <span className="px-2 text-center text-[11px] font-semibold text-ink">
+                                          {index === 0
+                                            ? t.uploadAadhaar
+                                            : t.addAadhaar}
+                                        </span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  {row ? (
+                                    <UploadActionButton
+                                      variant="danger"
+                                      onClick={() => removeAadhaar(row.id)}
+                                    >
+                                      {t.removeAadhaar}
+                                    </UploadActionButton>
+                                  ) : null}
+                                </div>
+                              );
+                            },
+                          )}
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <UploadActionButton
+                            onClick={openAadhaarPicker}
+                            disabled={
+                              aadhaarPreviews.length >= MAX_AADHAAR_UPLOADS
+                            }
+                          >
+                            <UploadGlyph className="h-3.5 w-3.5" />
+                            {aadhaarPreviews.length > 0
+                              ? t.addAadhaar
+                              : t.uploadAadhaar}
+                          </UploadActionButton>
+                          <span className="text-[11px] text-ink-soft">
+                            JPG / PNG · max 2 MB each
+                          </span>
+                        </div>
+                        <FieldError message={fieldErrors.aadhaar_cards} />
                         <input
                           id="aadhaar_cards"
                           ref={aadhaarInputRef}
@@ -531,7 +696,7 @@ export default function AdmissionNew() {
                         />
                       </div>
                     </div>
-                  </FormField>
+                  </div>
                 </div>
               </FormSection>
 

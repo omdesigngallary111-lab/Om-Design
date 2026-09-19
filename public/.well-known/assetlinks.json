@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.omdesignandclasses.app",
+      "sha256_cert_fingerprints": [
+        "96:28:FA:1E:B3:C2:02:81:2C:A2:11:1C:04:20:6D:94:76:6D:92:C2:00:F5:09:CE:06:47:A9:57:5F:C8:12:90"
+      ]
+    }
+  }
+]
