@@ -709,7 +709,7 @@ export async function fetchAllAdmissions({
       `current_address.ilike.%${safe}%`,
       `reference_details.ilike.%${safe}%`,
     ]
-    if (/^\d+$/.test(safe)) orParts.push(`form_number.eq.${Number(safe)}`)
+    orParts.push(`form_number.ilike.%${safe}%`)
     q = q.or(orParts.join(','))
   }
 
@@ -851,7 +851,12 @@ async function removeAdmissionAssets(paths) {
 export async function createAdmission(payload) {
   if (!supabase) return { admission: null, error: NOT_CONFIGURED_ERROR }
 
-  const { data: formNumberRaw, error: seqErr } = await supabase.rpc('next_admission_form_number')
+  const admissionType = ['student', 'sketcher', 'emcad'].includes(payload.admission_type)
+    ? payload.admission_type
+    : 'student'
+  const { data: formNumberRaw, error: seqErr } = await supabase.rpc('next_admission_form_code', {
+    p_type: admissionType,
+  })
   if (seqErr || formNumberRaw == null) {
     return { admission: null, error: seqErr?.message ?? 'Could not assign form number' }
   }
@@ -903,7 +908,8 @@ export async function createAdmission(payload) {
   const now = new Date().toISOString()
   const row = {
     id: admissionId,
-    form_number: Number(formNumberRaw),
+    form_number: String(formNumberRaw),
+    admission_type: admissionType,
     student_name: payload.student_name,
     student_mobile: payload.student_mobile,
     father_mobile: payload.father_mobile || null,

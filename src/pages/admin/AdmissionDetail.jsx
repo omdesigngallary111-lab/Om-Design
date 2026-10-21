@@ -280,6 +280,16 @@ export default function AdmissionDetail() {
               <h2 className="text-sm font-bold uppercase tracking-wide text-ink-soft mb-3">Application</h2>
               <dl>
                 <FieldRow label="Form number" value={admission.form_number} />
+                <FieldRow
+                  label="Type"
+                  value={
+                    admission.admission_type === "sketcher"
+                      ? "Sketcher"
+                      : admission.admission_type === "emcad"
+                        ? "Emcad"
+                        : "Student"
+                  }
+                />
                 <FieldRow label="Mobile" value={admission.student_mobile} />
                 <FieldRow label="Father mobile" value={admission.father_mobile} />
                 <FieldRow label="Current address" value={admission.current_address} />

@@ -148,7 +148,7 @@ serve(async (req) => {
   if (seqErr || formNumberRaw == null) {
     return jsonResponse({ error: "Could not assign form number" }, 500);
   }
-  const formNumber = Number(formNumberRaw);
+  const formNumber = String(formNumberRaw);
 
   const admissionId = crypto.randomUUID();
   const photoExt = photoDecoded.mime.includes("png") ? "png" : "jpg";

@@ -17,6 +17,7 @@ import {
   fetchAllAdmissions,
   fetchAdmissionStatusCounts,
 } from "../../lib/admin.js";
+import { admissionTypeLabel } from "../../lib/admissionConstants.js";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination.js";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue.js";
 
@@ -240,8 +241,13 @@ export default function Admissions() {
                 key={row.id}
                 className="border-b border-ink/5 hover:bg-sand/40 transition-colors"
               >
-                <td className="px-4 py-3.5 text-sm font-bold tabular-nums text-maroon">
-                  {row.form_number ?? "—"}
+                <td className="px-4 py-3.5">
+                  <p className="text-sm font-bold tabular-nums text-maroon">
+                    {row.form_number ?? "—"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                    {admissionTypeLabel(row.admission_type)}
+                  </p>
                 </td>
                 <td className="px-4 py-3.5">
                   <Link

@@ -5,7 +5,7 @@ import PageHeader from "../../components/admin/PageHeader.jsx";
 import SignaturePad from "../../components/SignaturePad.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { createAdmission } from "../../lib/admin.js";
-import { BATCH_TYPES } from "../../lib/admissionConstants.js";
+import { ADMISSION_TYPES, BATCH_TYPES, admissionTypeLabel } from "../../lib/admissionConstants.js";
 import { formCopy, rules } from "../../lib/i18n/admissionTranslations.js";
 import { isNativePlatform, pickNativeImage } from "../../lib/native.js";
 
@@ -184,6 +184,7 @@ function LanguageToggle({ language, onChange, label }) {
 export default function AdmissionNew() {
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const [admissionType, setAdmissionType] = useState(null);
   const [language, setLanguage] = useState("gu");
   const [form, setForm] = useState(emptyForm);
   const [agreed, setAgreed] = useState(false);
@@ -383,6 +384,7 @@ export default function AdmissionNew() {
       package: form.package.trim(),
       join_date: form.join_date || null,
       preferred_language: language,
+      admission_type: admissionType,
     });
     setSubmitting(false);
 
@@ -395,6 +397,42 @@ export default function AdmissionNew() {
     navigate(`/admin/admissions/${admission.id}`, { state: { justCreated: true } });
   };
 
+  const selectedType = ADMISSION_TYPES.find((row) => row.id === admissionType);
+
+  if (!admissionType) {
+    return (
+      <>
+        <Seo title="New admission" noIndex />
+        <Link
+          to="/admin/admissions"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-ink-soft hover:text-maroon mb-4"
+        >
+          ← Admissions
+        </Link>
+        <PageHeader
+          title="New admission"
+          description="Choose the admission type. The form is the same for all three."
+        />
+        <div className="grid gap-4 sm:grid-cols-3 max-w-4xl">
+          {ADMISSION_TYPES.map((type) => (
+            <button
+              key={type.id}
+              type="button"
+              onClick={() => setAdmissionType(type.id)}
+              className="group flex min-h-[9.5rem] flex-col rounded-2xl border border-ink/10 bg-white p-6 text-left shadow-sm transition-colors hover:border-maroon/40 hover:bg-maroon/[0.03]"
+            >
+              <p className="font-display text-3xl text-maroon">{type.label}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{type.detail}</p>
+              <span className="mt-auto pt-5 text-xs font-semibold text-maroon group-hover:underline">
+                Continue →
+              </span>
+            </button>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Seo title="New admission" noIndex />
@@ -405,9 +443,23 @@ export default function AdmissionNew() {
         ← Admissions
       </Link>
       <PageHeader
-        title="New admission"
-        description="Fill in the student details, then download the PDF record from the admission page."
+        title={`New ${admissionTypeLabel(admissionType)} admission`}
+        description="Fill in the details, then download the PDF record from the admission page."
+        action={
+          <button
+            type="button"
+            onClick={() => setAdmissionType(null)}
+            className="btn-ghost !text-xs !py-2"
+          >
+            Change type
+          </button>
+        }
       />
+      {selectedType ? (
+        <p className="mb-4 inline-flex items-center rounded-full border border-maroon/20 bg-maroon/5 px-3 py-1.5 text-xs font-semibold text-maroon">
+          {selectedType.label}
+        </p>
+      ) : null}
 
       <div className="max-w-3xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-ink/8 bg-white px-5 py-4 shadow-sm text-left">
